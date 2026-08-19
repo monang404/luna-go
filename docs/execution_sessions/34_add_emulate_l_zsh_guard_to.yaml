@@ -1,0 +1,96 @@
+session:
+  id: SESSION-34
+  title: Add emulate -L zsh guard to option-sensitive functions
+  category: technical-debt
+  priority: P3
+  complexity: S
+  weight: 1
+objective: >-
+  Add `emulate -L zsh` to _ai_agent_is_dangerous and _ai_yolo_shell_safe so their array/string-heavy logic
+  is unaffected by a caller's non-default setopt state.
+backlog_items:
+- id: TECH-002
+  role: primary
+root_causes: []
+depends_on: []
+blocks:
+- SESSION-43
+boundary_rationale: >-
+  TECH-002 is a standalone hardening item confined to exactly the two functions the audit identifies as
+  highest-risk for setopt-sensitivity.
+why_not_more:
+- Blanket-adding emulate -L zsh repo-wide is explicitly out of scope; the audit flags these two functions
+  specifically as the highest-risk candidates.
+why_not_less:
+- Both functions must be covered since both do intensive array/string manipulation relevant to security
+  classification.
+scope:
+  include:
+  - Add emulate -L zsh to _ai_agent_is_dangerous
+  - Add emulate -L zsh to _ai_yolo_shell_safe
+  exclude:
+  - Adding emulate -L zsh to any other function repo-wide
+affected_files:
+- 50-agent/00-policy.zsh
+affected_functions:
+- _ai_agent_is_dangerous
+- _ai_yolo_shell_safe
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for Add emulate -L zsh guard to option-sensitive functions
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: These two functions are unaffected by caller setopt state
+  verification: UNIT
+tests:
+  targeted:
+  - Invoke both functions from a context with altered setopt (e.g. via 90-local/), confirm behavior unchanged
+regression_checks:
+- Default-setopt invocation behavior unchanged for both functions
+risk:
+  level: low
+  blast_radius: low
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-34.zip
+  contains: entire repository
+notes: >-
+  VERIFY-009 (Session 43) exercises this fix under altered setopt conditions.
+handoff:
+  next_session: SESSION-35
+  notes: >-
+    This session's changes must leave the application fully usable. Sessions SESSION-43 depend on this
+    session's checkpoint as their safe baseline.

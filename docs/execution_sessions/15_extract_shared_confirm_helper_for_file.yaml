@@ -1,0 +1,107 @@
+session:
+  id: SESSION-15
+  title: Extract shared confirm helper for file-overwrite commands
+  category: architecture
+  priority: P1
+  complexity: S
+  weight: 2
+objective: >-
+  Extract a single shared `_ai_confirm(prompt, timeout)` helper used by all 5 commands that currently
+  duplicate ad-hoc confirm logic (aicommit, aipatch, aicode -o, aiundo, aibakclean), and pick one timeout
+  policy based on action risk rather than historical accident.
+backlog_items:
+- id: TECH-001
+  role: primary
+root_causes:
+- RC-009
+depends_on: []
+blocks:
+- SESSION-16
+- SESSION-17
+boundary_rationale: >-
+  TECH-001 is a foundational, self-contained refactor of duplicated confirm logic across 5 known call
+  sites. It is scheduled ahead of RC-003's Phase 4 cluster (Sessions 16-18) because CLI-001 and UX-001
+  both explicitly note they should reuse this shared helper rather than duplicating a 5th/6th copy, per
+  the strategic-fix guidance for foundational root causes with many downstream findings.
+why_not_more:
+- This session only extracts and wires the helper into its 5 known existing call sites; it does not add
+  confirm gates to airun/aifix (Sessions 16, 17), which are separate backlog items with their own acceptance
+  criteria.
+why_not_less:
+- The helper must exist and be proven correct across all 5 existing call sites before downstream sessions
+  can safely depend on it.
+scope:
+  include:
+  - Extract _ai_confirm(prompt, timeout) shared helper
+  - Wire aicommit, aipatch, aicode -o, aiundo, aibakclean to use it
+  - Decide and document one timeout policy based on action risk
+  exclude:
+  - Adding confirm gates to any command that doesn't currently have one (that is CLI-001/UX-001's job)
+affected_files:
+- 40-workflow/00-aicommit.zsh
+- 35-files/10-aipatch.zsh
+- 30-code/05-code.zsh
+- 35-files/15-aiundo.zsh
+- 35-files/20-aibakclean.zsh
+affected_functions:
+- _ai_confirm (new)
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for Extract shared confirm helper for file-overwrite commands
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: One shared confirm function is used by all 5 commands
+  verification: STATIC
+- id: AC-02
+  description: Timeout choice is documented and risk-based
+  verification: STATIC
+tests:
+  targeted:
+  - Confirm-then-cancel and confirm-then-accept integration test for each of the 5 commands
+regression_checks:
+- Each of the 5 commands' existing confirm behavior (prompt text, cancel-safety) is unchanged after refactor
+risk:
+  level: low
+  blast_radius: medium
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-15.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-16
+  notes: >-
+    This session's changes must leave the application fully usable. Sessions SESSION-16, SESSION-17 depend
+    on this session's checkpoint as their safe baseline.

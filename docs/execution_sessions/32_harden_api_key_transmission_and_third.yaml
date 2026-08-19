@@ -1,0 +1,102 @@
+session:
+  id: SESSION-32
+  title: Harden API-key transmission and third-party permissions-override sourcing
+  category: security
+  priority: P2
+  complexity: S
+  weight: 2
+objective: >-
+  Stop passing the API key as a curl command-line argument (switch to stdin-based config or a chmod-600
+  temp header file), and print an explicit warning before sourcing a project-local .aiagent/permissions.zsh
+  override file.
+backlog_items:
+- id: SEC-003
+  role: primary
+- id: SEC-004
+  role: primary
+root_causes: []
+depends_on: []
+blocks: []
+boundary_rationale: >-
+  Both are standalone Medium-severity security hardening items with distinct files but the same category
+  (local information-disclosure / supply-chain risk) and the same verification method (SECURITY); grouped
+  to keep the security-only session boundary rule (no mixing with UX) while avoiding two near-identical
+  small checkpoints.
+why_not_more:
+- No other backlog item shares either of these specific mechanisms.
+why_not_less:
+- Both are single-file, well-isolated changes; splitting would not reduce risk, only add checkpoint overhead.
+scope:
+  include:
+  - 'Switch curl -H "Authorization: Bearer $apikey" to -K - (stdin config) or a chmod-600 temp header
+    file, deleted immediately after use'
+  - Print an explicit warning when .aiagent/permissions.zsh is found before sourcing it
+  exclude:
+  - Full validation/whitelisting of which variables permissions.zsh may override (documented as a future
+    hardening step if not implemented now)
+affected_files:
+- 10-core/48-http_call_blocking.zsh
+- 06-permissions/00-config.zsh
+affected_functions: []
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for Harden API-key transmission and third-party permissions-override
+    sourcing
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: API key never appears in ps/ /proc/<pid>/cmdline output during a request
+  verification: SECURITY
+- id: AC-02
+  description: User receives an explicit warning before .aiagent/permissions.zsh is sourced
+  verification: SECURITY
+tests:
+  targeted:
+  - Process-inspection test during a live (mocked) request confirming no API key in argv
+  - Test with a project-local permissions.zsh present, confirm warning is printed before sourcing
+regression_checks:
+- Existing successful API requests still succeed after the curl invocation change
+risk:
+  level: low
+  blast_radius: medium
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-32.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-33
+  notes: >-
+    This session's changes must leave the application fully usable. No downstream session strictly depends
+    on this one; safe to run in any order relative to independent sessions.

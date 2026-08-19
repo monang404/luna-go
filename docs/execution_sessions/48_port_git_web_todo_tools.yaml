@@ -1,0 +1,121 @@
+session:
+  id: SESSION-48
+  title: Port tool git, web_fetch, dan todo ke internal/tools
+  category: tools
+  priority: P1
+  complexity: S
+  weight: 2
+objective: Implementasikan Tool interface untuk git_status, git_diff, web_fetch, todo_write, todo_read
+  — port dari 40-tool_git.zsh, 45-tool_web_fetch.zsh, 50-tool_todo.zsh, plus run_command/exec_process/run_test
+  dari 30-tool_process.zsh dan 35-tool_run_test.zsh.
+backlog_items:
+- id: MIG-08
+  role: primary
+root_causes: []
+depends_on:
+- SESSION-42
+- SESSION-43
+blocks:
+- SESSION-51
+boundary_rationale: Sisa 7 tool yang belum diporting di SESSION-47 — semuanya lebih kecil & lebih independen
+  satu sama lain (git readonly, web_fetch readonly, todo readonly, process/shell capability tersendiri)
+  sehingga cukup aman digabung satu sesi berbobot lebih kecil (S) dibanding SESSION-47.
+why_not_more:
+- run_command tetap ditandai legacy/hidden-from-model-by-default sesuai komentar di tool_registry.zsh
+  asli — tidak dihapus supaya backward compatible, tapi tidak dipromosikan jadi default baru.
+why_not_less:
+- Git/web_fetch/todo/process tidak realistis dipisah lagi jadi 4 sesi terpisah karena masing-masing kecil
+  (1 file, <50 baris tiap fungsi) — memecahnya cuma menambah overhead checkpoint tanpa manfaat.
+scope:
+  include:
+  - git_status, git_diff (readonly, wrapper `git status`/`git diff` via os/exec)
+  - 'web_fetch: curl ke net/http.Get + strip HTML jadi teks (pakai net/html atau regex sederhana, port
+    logic strip yang ada)'
+  - 'todo_write/todo_read: simpan checklist sesi ke file lokal (bukan bagian project), format sama seperti
+    zsh'
+  - exec_process (typed, tanpa shell interpreter) & run_test (typed test runner) & run_command (legacy,
+    hidden by default)
+  exclude:
+  - UI rendering hasil tool (itu bagian screens, SESSION-53)
+source_zsh_files:
+- 30-ai/05-tools/30-tool_process.zsh
+- 30-ai/05-tools/35-tool_run_test.zsh
+- 30-ai/05-tools/40-tool_git.zsh
+- 30-ai/05-tools/45-tool_web_fetch.zsh
+- 30-ai/05-tools/50-tool_todo.zsh
+target_go_files:
+- internal/tools/git.go
+- internal/tools/process.go
+- internal/tools/webfetch.go
+- internal/tools/todo.go
+subtasks:
+- id: '01'
+  title: Analisis file zsh sumber & rancang struct/interface Go padanannya
+  type: analysis
+  required: true
+- id: '02'
+  title: Implementasi package Go sesuai scope sesi ini
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrasikan dengan package lain yang sudah ada & pastikan tidak ada caller yang terlewat
+  type: integration
+  required: true
+- id: '04'
+  title: Tulis & jalankan unit test untuk tiap acceptance criterion
+  type: verification
+  required: true
+- id: '05'
+  title: Jalankan regression check (go vet, go build, existing test suite)
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md dan MIGRATION_TRACEABILITY.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Buat checkpoint penuh repo (source zsh + module Go baru)
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: git_status/git_diff hasilnya sama persis (format teks) dengan output `git status`/`git
+    diff` yang dipanggil versi zsh
+  verification: UNIT
+- id: AC-02
+  description: web_fetch berhasil strip HTML jadi teks bersih untuk minimal 2 halaman fixture nyata
+  verification: UNIT
+- id: AC-03
+  description: 'todo_write/todo_read round-trip: tulis lalu baca kembali menghasilkan checklist identik'
+  verification: UNIT
+- id: AC-04
+  description: run_command tidak muncul di daftar tool default yang di-expose ke model kecuali di-enable
+    eksplisit
+  verification: STATIC
+tests:
+  targeted:
+  - Test git tool di repo fixture dengan beberapa file berubah
+  - Test web_fetch dengan 2 fixture HTML (halaman sederhana + halaman dengan script/style yang harus di-strip)
+  - Test todo round-trip write->read
+regression_checks:
+- Pastikan exec_process benar-benar tidak lewat shell interpreter (no `/bin/sh -c` di implementasi Go)
+risk:
+  level: low
+  blast_radius: medium
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-48.zip
+  contains: entire repository (source zsh_bagas + go/ tree in progress)
+notes: Setelah sesi ini, seluruh 17 tool dari AI_TOOL_REGISTRY asli sudah punya padanan Go dan siap dipakai
+  agent loop (SESSION-49/50).
+handoff:
+  next_session: SESSION-49
+  notes: SESSION-49/50 (agent loop) sekarang punya akses penuh ke internal/tools untuk mulai wiring ReAct
+    loop nyata.

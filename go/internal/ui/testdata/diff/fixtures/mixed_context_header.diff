@@ -1,0 +1,11 @@
+--- a/mixed.txt
++++ b/mixed.txt
+@@ -1,7 +1,7 @@
+ alpha
+ beta
+-gamma
++GAMMA
+ delta
+-epsilon
++EPSILON
+ zeta

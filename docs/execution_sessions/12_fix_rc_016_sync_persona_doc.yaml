@@ -1,0 +1,102 @@
+session:
+  id: SESSION-12
+  title: Fix RC-016 — sync persona/doc source-of-truth drift
+  category: documentation
+  priority: P2
+  complexity: S
+  weight: 1
+objective: >-
+  Replace the hardcoded near-duplicate persona text in 00-sysprompt.zsh with a direct reference to $AI_PERSONA_LONG,
+  and update 40-context_engine_docs.zsh's stale 'not implemented' claim to reflect that the progressive-context
+  Level 1-6 instructions are already implemented in the active sysprompt.
+backlog_items:
+- id: PROMPT-003
+  role: primary
+- id: PROMPT-005
+  role: related
+root_causes:
+- RC-016
+depends_on: []
+blocks:
+- SESSION-41
+boundary_rationale: >-
+  PROMPT-003 and PROMPT-005 share RC-016 (drift between a source-of-truth variable/implementation and
+  its documentation/duplicated text). Both are small, low-risk textual corrections verifiable by a single
+  static diff pass.
+why_not_more:
+- No other backlog item shares this exact drift pattern.
+why_not_less:
+- Both fixes are the same class of 'source of truth vs. copy' correction in adjacent config files; splitting
+  adds checkpoint overhead disproportionate to the trivial size of each individual change.
+scope:
+  include:
+  - Replace hardcoded block in 00-sysprompt.zsh:19-44 with a direct reference to $AI_PERSONA_LONG
+  - Update 40-context_engine_docs.zsh's stale doc comment to match implemented behavior
+  exclude:
+  - Any change to the actual persona content or sysprompt instruction ordering
+affected_files:
+- 50-agent/40-runtime/00-sysprompt.zsh
+- 00-config/25-persona.zsh
+- 00-config/40-context_engine_docs.zsh
+affected_functions: []
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for sync persona/doc source-of-truth drift
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: No duplicated persona text remains outside the single source variable
+  verification: STATIC
+- id: AC-02
+  description: Doc file's claims match actual sysprompt content
+  verification: STATIC
+tests:
+  targeted:
+  - Diff 00-sysprompt.zsh output before/after — content byte-identical to $AI_PERSONA_LONG
+  - Static review confirming doc comment update matches 00-sysprompt.zsh:68-75
+regression_checks:
+- Sysprompt assembly produces identical output content to before the refactor
+risk:
+  level: low
+  blast_radius: low
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-12.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-13
+  notes: >-
+    This session's changes must leave the application fully usable. Sessions SESSION-41 depend on this
+    session's checkpoint as their safe baseline.

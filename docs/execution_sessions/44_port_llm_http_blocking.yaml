@@ -1,0 +1,116 @@
+session:
+  id: SESSION-44
+  title: Port HTTP blocking call + payload builder ke internal/llmclient
+  category: networking
+  priority: P1
+  complexity: M
+  weight: 3
+objective: Port 48-http_call_blocking.zsh, 43-payload_builder.zsh, dan 41-provider_candidate.zsh menjadi
+  internal/llmclient dengan net/http (bukan lagi shell-out ke curl), untuk jalur request non-streaming.
+backlog_items:
+- id: MIG-04
+  role: primary
+root_causes: []
+depends_on:
+- SESSION-41
+blocks:
+- SESSION-45
+- SESSION-46
+boundary_rationale: Jalur blocking (non-streaming) lebih sederhana dari SSE dan jadi fondasi struct request/response
+  yang bakal dipakai ulang oleh jalur streaming di SESSION-45 — worth diselesaikan & ditest duluan sebagai
+  baseline sebelum kompleksitas SSE ditambahkan.
+why_not_more:
+- Belum menyentuh SSE stream parsing sama sekali (itu SESSION-45) — sesi ini murni request/response penuh
+  (bukan chunked), yang secara natural lebih sedikit permukaan bug.
+why_not_less:
+- Payload builder dan provider candidate selection tidak bisa dipisah dari blocking call karena ketiganya
+  membentuk satu alur (pilih provider -> bangun payload -> kirim call) yang perlu ditest sebagai satu
+  round-trip nyata ke provider asli.
+scope:
+  include:
+  - Struct Request/Response OpenAI-compatible (messages, tools, model, dst.)
+  - func BuildPayload(cfg, messages, tools) ([]byte, error) — port 1:1 dari payload_builder.zsh
+  - func SelectProviderCandidate(cfg, previousFailures) (Provider, error) — port provider_candidate.zsh
+  - func CallBlocking(ctx, provider, payload) (Response, error) pakai net/http, timeout dari config.Limits
+  exclude:
+  - Circuit breaker & retry decision (itu SESSION-46, walau CallBlocking dipanggil olehnya nanti)
+  - SSE/streaming path (itu SESSION-45)
+source_zsh_files:
+- 30-ai/10-core/48-http_call_blocking.zsh
+- 30-ai/10-core/43-payload_builder.zsh
+- 30-ai/10-core/41-provider_candidate.zsh
+target_go_files:
+- internal/llmclient/blocking.go
+- internal/llmclient/payload.go
+- internal/llmclient/candidate.go
+subtasks:
+- id: '01'
+  title: Analisis file zsh sumber & rancang struct/interface Go padanannya
+  type: analysis
+  required: true
+- id: '02'
+  title: Implementasi package Go sesuai scope sesi ini
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrasikan dengan package lain yang sudah ada & pastikan tidak ada caller yang terlewat
+  type: integration
+  required: true
+- id: '04'
+  title: Tulis & jalankan unit test untuk tiap acceptance criterion
+  type: verification
+  required: true
+- id: '05'
+  title: Jalankan regression check (go vet, go build, existing test suite)
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md dan MIGRATION_TRACEABILITY.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Buat checkpoint penuh repo (source zsh + module Go baru)
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: Payload JSON yang dihasilkan BuildPayload identik strukturnya dengan output payload_builder.zsh
+    untuk input sama
+  verification: UNIT
+- id: AC-02
+  description: CallBlocking sukses round-trip nyata ke minimal 1 provider asli (pakai API key dev) dan
+    parse response benar
+  verification: MANUAL
+- id: AC-03
+  description: Provider candidate selection menghormati AI_PROVIDER_ORDER dan skip provider tanpa key,
+    sama seperti config layer
+  verification: UNIT
+- id: AC-04
+  description: Timeout HTTP dihormati (request lambat di-cancel sesuai limits.go)
+  verification: UNIT
+tests:
+  targeted:
+  - Fixture test payload builder dengan beberapa kombinasi messages+tools
+  - Manual round-trip test ke 1 provider asli (butuh API key di environment dev) dengan payload minimal
+  - Test provider candidate fallback saat provider pertama gagal
+regression_checks:
+- Pastikan tidak ada shell-out ke curl tersisa di package ini (full net/http)
+risk:
+  level: medium
+  blast_radius: medium
+  rollback: moderate
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-44.zip
+  contains: entire repository (source zsh_bagas + go/ tree in progress)
+notes: Ini titik pertama project benar-benar bicara ke internet lewat Go — worth extra hati-hati soal
+  header, timeout, dan error wrapping supaya pesan error tetap informatif seperti versi zsh.
+handoff:
+  next_session: SESSION-45
+  notes: SESSION-45 akan reuse struct Request/Response dan BuildPayload dari sesi ini untuk jalur streaming.

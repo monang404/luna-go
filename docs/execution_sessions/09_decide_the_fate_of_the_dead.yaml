@@ -1,0 +1,112 @@
+session:
+  id: SESSION-09
+  title: Decide the fate of the dead subagent 'coder' role
+  category: architecture
+  priority: P1
+  complexity: S
+  weight: 2
+objective: >-
+  Make and implement an explicit decision on the fully-implemented-but-never-called subagent 'coder' role:
+  either add a real trigger path that can invoke role=coder, or remove the coder-specific code entirely,
+  documenting the decision either way so no dead code remains silently present.
+backlog_items:
+- id: ARCH-001
+  role: primary
+root_causes:
+- RC-015
+depends_on: []
+blocks:
+- SESSION-10
+boundary_rationale: >-
+  ARCH-001 is a standalone architectural decision confined to the subagent call-site surface; it must
+  be resolved before SEC-006's safety fix (Session 10) because the correct shape of that fix depends on
+  whether 'coder' becomes reachable or is removed.
+why_not_more:
+- If the decision is to keep and activate 'coder', the actual trigger-heuristic implementation and SEC-006's
+  safety hardening are scoped to Session 10, not duplicated here, to keep this session focused on the
+  decision + code-presence outcome.
+why_not_less:
+- The decision cannot be deferred — every other subagent-role backlog item (SEC-006) needs to know whether
+  'coder' will be reachable before it can define an appropriately-scoped tool allowlist.
+scope:
+  include:
+  - Grep-confirm the current caller count for _ai_subagent_run (expect 2, both hardcoded researcher)
+  - 'Decide: (a) add a real trigger (e.g. heuristic offering coder for cross-file refactor goals), or
+    (b) remove coder-specific code'
+  - Implement the chosen outcome; document the decision and rationale in code comments and CHANGELOG
+  exclude:
+  - SEC-006's Termux-context injection and explicit tool-allowlist work (Session 10, sequenced after this
+    decision)
+affected_files:
+- 55-subagent/10-sysprompt.zsh
+- 55-subagent/05-tool_allowlist.zsh
+- 55-subagent/15-run_step.zsh
+affected_functions:
+- _ai_subagent_run
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for Decide the fate of the dead subagent 'coder' role
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01-kept
+  description: 'If kept: at least one real UI/workflow path can invoke role=coder'
+  verification: INTEGRATION
+- id: AC-01-removed
+  description: 'If removed: all coder-specific code removed or clearly marked reserved/unused; no silent
+    dead code'
+  verification: STATIC
+- id: AC-02
+  description: A caller-count assertion (grep-based) confirms the decision was actually implemented, not
+    just discussed
+  verification: STATIC
+tests:
+  targeted:
+  - grep -rn '_ai_subagent_run' across the full codebase, assert caller count matches the decided outcome
+regression_checks:
+- Existing researcher-role subagent path shows no regression regardless of the coder decision
+risk:
+  level: low
+  blast_radius: medium
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-09.zip
+  contains: entire repository
+notes: >-
+  If kept, SEC-006 (Session 10) must resolve the safety gap before coder becomes reachable in practice.
+handoff:
+  next_session: SESSION-10
+  notes: >-
+    This session's changes must leave the application fully usable. Sessions SESSION-10 depend on this
+    session's checkpoint as their safe baseline.

@@ -1,0 +1,135 @@
+session:
+  id: SESSION-53
+  title: Port UI components & screens ke internal/ui
+  category: ui
+  priority: P1
+  complexity: L
+  weight: 5
+objective: Port seluruh 30-ai/60-ui/components/* (approval, cards, disclosure, header, palette, progress,
+  state, timeline, verbosity) dan screens/* (agent, home, palette, report) + router.zsh + 00-command_registry.zsh
+  menjadi package Go composite di atas primitives SESSION-52.
+backlog_items:
+- id: MIG-13
+  role: primary
+root_causes: []
+depends_on:
+- SESSION-52
+blocks:
+- SESSION-55
+boundary_rationale: Sembilan component dan empat screen ini semuanya composite di atas primitives SESSION-52
+  dan saling reuse (mis. screen agent memakai component timeline+progress+approval) — koheren diporting
+  sekaligus sebagai satu lapisan presentasi lengkap, walau berbobot besar (L).
+why_not_more:
+- Belum wiring ke CLI entrypoint nyata di sesi ini (itu SESSION-55) — screen & router diverifikasi lewat
+  test harness yang memanggilnya langsung dengan data dummy/fixture dulu.
+why_not_less:
+- Component dan screen tidak realistis dipisah jadi 2 sesi karena tidak ada screen yang tidak memakai
+  minimal 2-3 component — memisahnya cuma memindah pekerjaan integrasi ke sesi berikutnya tanpa mengurangi
+  total kompleksitas.
+scope:
+  include:
+  - 9 component sebagai fungsi Render(data) string murni (approval prompt, card, disclosure, header, command
+    palette, progress bar, state indicator, timeline, verbosity toggle)
+  - 4 screen (home, agent, palette, report) sebagai composite dari component + primitives
+  - 'Router: pemetaan input command -> screen/handler, port dari router.zsh + 40-dispatcher.zsh'
+  - 'Command registry: daftar semua command (`aiask`, `aiagent`, dst.) dengan deskripsi & handler, port
+    dari 00-command_registry.zsh'
+  exclude:
+  - Actual terminal input handling / readline (itu bagian SESSION-55 CLI wiring)
+  - Update-check/update-confirm screens (30-update_detect.zsh/35-update_confirm.zsh) — didorong ke SESSION-56
+    karena terkait distribusi, bukan core UI
+source_zsh_files:
+- 30-ai/60-ui/components/approval.zsh
+- 30-ai/60-ui/components/cards.zsh
+- 30-ai/60-ui/components/disclosure.zsh
+- 30-ai/60-ui/components/header.zsh
+- 30-ai/60-ui/components/palette.zsh
+- 30-ai/60-ui/components/progress.zsh
+- 30-ai/60-ui/components/state.zsh
+- 30-ai/60-ui/components/timeline.zsh
+- 30-ai/60-ui/components/verbosity.zsh
+- 30-ai/60-ui/screens/agent.zsh
+- 30-ai/60-ui/screens/home.zsh
+- 30-ai/60-ui/screens/palette.zsh
+- 30-ai/60-ui/screens/report.zsh
+- 30-ai/60-ui/router.zsh
+- 30-ai/60-ui/00-command_registry.zsh
+- 30-ai/60-ui/40-dispatcher.zsh
+target_go_files:
+- internal/ui/components/*.go
+- internal/ui/screens/*.go
+- internal/ui/router.go
+- internal/ui/registry.go
+subtasks:
+- id: '01'
+  title: Analisis file zsh sumber & rancang struct/interface Go padanannya
+  type: analysis
+  required: true
+- id: '02'
+  title: Implementasi package Go sesuai scope sesi ini
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrasikan dengan package lain yang sudah ada & pastikan tidak ada caller yang terlewat
+  type: integration
+  required: true
+- id: '04'
+  title: Tulis & jalankan unit test untuk tiap acceptance criterion
+  type: verification
+  required: true
+- id: '05'
+  title: Jalankan regression check (go vet, go build, existing test suite)
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md dan MIGRATION_TRACEABILITY.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Buat checkpoint penuh repo (source zsh + module Go baru)
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: Tiap component menghasilkan output byte-identik dengan versi zsh untuk fixture data yang
+    sama (unicode & ASCII mode)
+  verification: UNIT
+- id: AC-02
+  description: Screen 'agent' compose dengan benar dari timeline+progress+approval saat diberi state agent
+    fixture
+  verification: UNIT
+- id: AC-03
+  description: Router memetakan semua command di registry ke handler yang benar, tidak ada command yang
+    hilang
+  verification: STATIC
+- id: AC-04
+  description: Command registry berisi command yang sama persis (nama & deskripsi) dengan 00-command_registry.zsh
+  verification: STATIC
+tests:
+  targeted:
+  - Golden-file test tiap component & screen dengan fixture data representatif, unicode & ASCII mode,
+    NO_COLOR on/off
+  - 'Test router: setiap command di registry punya handler terdaftar (no orphan command)'
+  - Snapshot diff manual antara render Go vs capture output zsh untuk skenario agent run lengkap
+regression_checks:
+- Diff command registry Go vs zsh, pastikan tidak ada command yang keliru kategori/hidden-state-nya
+risk:
+  level: high
+  blast_radius: medium
+  rollback: moderate
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-53.zip
+  contains: entire repository (source zsh_bagas + go/ tree in progress)
+notes: Sesi terbesar dari sisi jumlah file (16 file sumber). Kalau perlu dipecah lebih halus saat dikerjakan
+  nyata (mis. components dulu baru screens), itu keputusan pelaksana saat itu — secara desain keduanya
+  tetap satu lapisan presentasi yang koheren.
+handoff:
+  next_session: SESSION-54
+  notes: SESSION-55 (CLI wiring) menyambungkan router & command registry ini ke stdin/stdout nyata.

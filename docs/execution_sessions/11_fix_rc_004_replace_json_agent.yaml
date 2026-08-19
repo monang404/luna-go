@@ -1,0 +1,120 @@
+session:
+  id: SESSION-11
+  title: Fix RC-004 — replace JSON-agent persona with chat persona at freeform call-sites
+  category: prompt-safety
+  priority: P1
+  complexity: M
+  weight: 2
+objective: >-
+  Replace AI_PERSONA_LONG with AI_PERSONA_CHAT_LONG at the 6 remaining freeform chat call-sites (ail,
+  aiask) and make aisummarize's chunk/combine steps use a single, consistent, task-appropriate persona
+  instead of two different ones.
+backlog_items:
+- id: PROMPT-001
+  role: primary
+- id: PROMPT-004
+  role: related
+root_causes:
+- RC-004
+depends_on: []
+blocks: []
+boundary_rationale: >-
+  PROMPT-001 and PROMPT-004 share RC-004 ('fix documented, not propagated' — the same chat-vs-JSON persona
+  mismatch pattern that was already fixed for quick_chat.zsh/aiclip.zsh). Both are mechanical persona-reference
+  swaps verifiable by the same grep-based regression check and manual reply inspection.
+why_not_more:
+- aiagent's own JSON-contract use of AI_PERSONA_LONG is explicitly out of scope — that usage is correct
+  and must not be touched.
+why_not_less:
+- PROMPT-004's combine-step fix is the same class of persona mismatch in a closely related file family
+  (40-workflow); fixing PROMPT-001's 6 sites without also fixing aisummarize's inconsistency would leave
+  the identical bug pattern live one file over.
+scope:
+  include:
+  - Replace AI_PERSONA_LONG -> AI_PERSONA_CHAT_LONG at session_ask.zsh:31, session_repl.zsh:18,69, session_mgmt.zsh:31,66,
+    aiask.zsh:39
+  - Use one consistent task-appropriate plain-summarization prompt for aisummarize's chunk and combine
+    steps
+  exclude:
+  - aiagent's own JSON-contract persona usage (correct, must remain unchanged)
+affected_files:
+- 20-chat/10-session_ask.zsh
+- 20-chat/15-session_repl.zsh
+- 20-chat/20-session_mgmt.zsh
+- 20-chat/05-aiask.zsh
+- 40-workflow/30-aisummarize.zsh
+affected_functions:
+- _ai_session_ask
+- _ai_session_repl
+- session create/switch functions
+- aiask
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for replace JSON-agent persona with chat persona at freeform
+    call-sites
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: ail and aiask no longer reference AI_PERSONA_LONG in system prompt construction
+  verification: STATIC
+- id: AC-02
+  description: No **Thought**-style heading or raw JSON artifact appears in ail/aiask output over a multi-turn
+    test session
+  verification: MANUAL
+- id: AC-03
+  description: aiagent's JSON-contract behavior is unaffected
+  verification: REGRESSION
+- id: AC-04
+  description: Both aisummarize stages use the same, appropriately-scoped persona/prompt style
+  verification: STATIC
+tests:
+  targeted:
+  - 'Grep-based CI check: session_ask.zsh, session_repl.zsh, session_mgmt.zsh, aiask.zsh do not reference
+    AI_PERSONA_LONG/SHORT'
+  - Manual multi-turn ail session inspected for JSON-contract artifact leakage
+regression_checks:
+- aiagent's own JSON-contract persona usage untouched and verified unchanged
+risk:
+  level: low
+  blast_radius: medium
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-11.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-12
+  notes: >-
+    This session's changes must leave the application fully usable. No downstream session strictly depends
+    on this one; safe to run in any order relative to independent sessions.

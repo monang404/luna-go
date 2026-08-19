@@ -1,0 +1,98 @@
+session:
+  id: SESSION-25
+  title: Route diff colorizer through AI_C_* theme and NO_COLOR compliance
+  category: ui
+  priority: P2
+  complexity: S
+  weight: 2
+objective: >-
+  Replace aipatch's and aicode -o's hardcoded ANSI diff-coloring with AI_C_ERR/AI_C_OK routing so diff
+  output respects NO_COLOR/AI_UI_NO_COLOR and tracks theme changes.
+backlog_items:
+- id: UX-004
+  role: primary
+root_causes:
+- RC-007
+depends_on:
+- SESSION-24
+blocks: []
+boundary_rationale: >-
+  UX-004 is a direct downstream consumer of Session 24's rendering contract, scoped to exactly the two
+  files with hardcoded diff-coloring ANSI codes.
+why_not_more:
+- No other renderer besides the diff colorizer is touched in this session.
+why_not_less:
+- Both AC items (NO_COLOR compliance and theme-tracking) require the same single change (routing through
+  AI_C_*), so cannot be usefully split.
+scope:
+  include:
+  - Replace printf '\033[31m'/'\033[32m' with AI_C_ERR/AI_C_OK in both files
+  - Verify _ai_ui_supports_color/$NO_COLOR checks are respected
+  exclude:
+  - Any other rendering migration beyond the diff colorizer
+affected_files:
+- 35-files/10-aipatch.zsh
+- 30-code/05-code.zsh
+affected_functions: []
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for Route diff colorizer through AI_C_* theme and NO_COLOR
+    compliance
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: Diff output respects NO_COLOR/AI_UI_NO_COLOR
+  verification: MANUAL
+- id: AC-02
+  description: Diff colors track theme changes in 02-ui_colors.zsh
+  verification: MANUAL
+tests:
+  targeted:
+  - Run aipatch/aicode -o diff output with NO_COLOR=1, confirm no raw ANSI codes appear
+  - Change a theme color in 02-ui_colors.zsh, confirm diff output reflects it
+regression_checks:
+- Diff readability/correctness unchanged in default (colored) mode
+risk:
+  level: low
+  blast_radius: low
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-25.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-26
+  notes: >-
+    This session's changes must leave the application fully usable. No downstream session strictly depends
+    on this one; safe to run in any order relative to independent sessions.

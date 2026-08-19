@@ -1,0 +1,102 @@
+session:
+  id: SESSION-18
+  title: Document or migrate the trusted-local-command security model for aifix/airun
+  category: security
+  priority: P2
+  complexity: S
+  weight: 2
+objective: >-
+  Either migrate aifix/airun under the tool-registry/permission umbrella, or explicitly document them
+  as 'trusted local commands' with a defined, narrower safety contract, closing the RC-003 architectural
+  gap for these two commands.
+backlog_items:
+- id: SEC-005
+  role: primary
+root_causes:
+- RC-003
+depends_on:
+- SESSION-16
+- SESSION-17
+blocks: []
+boundary_rationale: >-
+  SEC-005 is the architectural/documentation resolution of the same RC-003 gap that CLI-001 and UX-001
+  addressed operationally; it is sequenced last within the RC-003 cluster because the decision (migrate
+  vs. document) is easier to make correctly once the guided-apply and confirm behavior already exist.
+why_not_more:
+- This session does not perform a full migration of aifix/airun into the tool-registry/permission framework
+  unless that is the explicitly chosen outcome — a full migration would be a materially larger, separate
+  effort requiring its own session(s) per the realism test.
+why_not_less:
+- The decision and its documentation cannot be split smaller without leaving the trust-model question
+  unresolved for one of the two commands.
+scope:
+  include:
+  - 'Decide: migrate aifix/airun under tool-registry/permission, OR document as trusted local commands
+    with narrower safety contract'
+  - Implement the chosen outcome
+  exclude:
+  - A full architectural migration of the legacy-command family beyond aifix/airun, unless explicitly
+    the chosen path and confirmed in-scope for one session
+affected_files:
+- 30-code/45-fix.zsh
+- 30-code/50-run.zsh
+affected_functions: []
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for Document or migrate the trusted-local-command security
+    model for aifix/airun
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: Either migration is complete, or explicit documentation exists stating the different (and
+    why safe) trust model
+  verification: STATIC
+tests:
+  targeted:
+  - Static review confirming documentation or migration matches the decided outcome
+regression_checks:
+- aifix/airun's operational behavior (Sessions 16-17 fixes) unaffected
+risk:
+  level: low
+  blast_radius: medium
+  rollback: moderate
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-18.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-19
+  notes: >-
+    This session's changes must leave the application fully usable. No downstream session strictly depends
+    on this one; safe to run in any order relative to independent sessions.

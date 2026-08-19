@@ -1,0 +1,101 @@
+session:
+  id: SESSION-07
+  title: Add startup self-check for hidden tool-extraction SPOF
+  category: reliability
+  priority: P2
+  complexity: S
+  weight: 2
+objective: >-
+  Add a startup self-check function that verifies `_ai_tool_extract_path`/`_ai_tool_extract_field` (and
+  other critical functions) are defined after sourcing completes, so a broken/syntax-error source file
+  produces a clear diagnostic instead of downstream 'command not found' errors across nearly every tool.
+backlog_items:
+- id: ARCH-002
+  role: primary
+root_causes: []
+depends_on: []
+blocks: []
+boundary_rationale: >-
+  ARCH-002 is a standalone architectural hardening item with no shared root cause with other backlog entries;
+  the audit already supplies a ready-to-use proposed self-check function, making this a small, coherent,
+  low-risk addition.
+why_not_more:
+- This session only adds the self-check; it does not attempt to fix any specific tool that might currently
+  be broken (none are, per the audits).
+why_not_less:
+- The self-check must cover the full set of critical functions in one pass to be meaningful; a partial
+  check would give false confidence.
+scope:
+  include:
+  - Add _ai_startup_selfcheck() verifying key tool-extraction and other critical functions exist post-source
+  - Wire it to run at the end of .zshrc sourcing
+  exclude:
+  - Any change to the tool functions themselves
+affected_files:
+- .zshrc
+- 05-tools/02-tool_args_extract.zsh
+affected_functions:
+- _ai_startup_selfcheck (new)
+- _ai_tool_extract_path
+- _ai_tool_extract_field
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for Add startup self-check for hidden tool-extraction SPOF
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: A syntax error injected into a critical source file produces a clear diagnostic at startup
+  verification: INTEGRATION
+- id: AC-02
+  description: Normal (non-broken) startup shows no new warnings
+  verification: REGRESSION
+tests:
+  targeted:
+  - Simulate a broken 02-tool_args_extract.zsh (syntax error) and confirm the self-check fires
+  - Normal startup with all files intact shows a clean self-check pass
+regression_checks:
+- Startup time impact is negligible (self-check is a cheap existence check, not exhaustive)
+risk:
+  level: low
+  blast_radius: low
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-07.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-08
+  notes: >-
+    This session's changes must leave the application fully usable. No downstream session strictly depends
+    on this one; safe to run in any order relative to independent sessions.

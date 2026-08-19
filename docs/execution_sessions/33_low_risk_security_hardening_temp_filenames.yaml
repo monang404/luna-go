@@ -1,0 +1,98 @@
+session:
+  id: SESSION-33
+  title: 'Low-risk security hardening: temp filenames and PATH ordering'
+  category: security
+  priority: P3
+  complexity: S
+  weight: 1
+objective: >-
+  Replace predictable PID-based backup/temp filenames (~15 locations) with mktemp, and document exec_process's
+  PATH-shadowing consideration as a defense-in-depth note.
+backlog_items:
+- id: SEC-008
+  role: primary
+- id: SEC-009
+  role: primary
+root_causes: []
+depends_on: []
+blocks: []
+boundary_rationale: >-
+  Both are Low-severity, standard-structural-risk security items with minimal individual scope; grouped
+  as a security-only batch (not mixed with UX) per the security boundary rule, avoiding disproportionate
+  checkpoint overhead for trivial fixes.
+why_not_more:
+- No other backlog item shares either mechanism.
+why_not_less:
+- Each fix is a small, mechanical, well-isolated change; grouping is appropriate given both are genuinely
+  low-risk hardening notes.
+scope:
+  include:
+  - Replace mv "$X" "$X.bak.$$"/"$X.tmp.$$" with mktemp/mktemp -d across ~15 locations in 30-ai/ and install.sh
+  - Document exec_process's PATH-shadowing consideration as a defense-in-depth note
+  exclude:
+  - Full checksum-verified absolute-path binary resolution (documented as a future consideration only)
+affected_files:
+- install.sh
+- 30-ai/**
+affected_functions: []
+subtasks:
+- id: '01'
+  title: 'Inspect all affected files/functions for Low-risk security hardening: temp filenames and PATH
+    ordering'
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: No predictable PID-based backup/temp names remain
+  verification: STATIC
+- id: AC-02
+  description: exec_process resolution is documented as a defense-in-depth consideration
+  verification: STATIC
+tests:
+  targeted:
+  - Grep for remaining .bak.$$/.tmp.$$ patterns, assert zero matches
+regression_checks:
+- Backup/temp file creation still succeeds at all ~15 locations after mktemp migration
+risk:
+  level: low
+  blast_radius: low
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-33.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-34
+  notes: >-
+    This session's changes must leave the application fully usable. No downstream session strictly depends
+    on this one; safe to run in any order relative to independent sessions.

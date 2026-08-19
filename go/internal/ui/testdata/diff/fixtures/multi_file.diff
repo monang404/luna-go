@@ -1,0 +1,15 @@
+diff --git a/one.txt b/one.txt
+index abc123..def456 100644
+--- a/one.txt
++++ b/one.txt
+@@ -1,2 +1,2 @@
+-hello
++hello world
+ unchanged
+diff --git a/two.txt b/two.txt
+index 111111..222222 100644
+--- a/two.txt
++++ b/two.txt
+@@ -1,1 +1,2 @@
+ line1
++line2

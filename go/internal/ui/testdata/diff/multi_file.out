@@ -1,0 +1,18 @@
+
+[38;2;139;148;158m── Diff yang diusulkan: multi.txt ──[0m
+diff --git a/one.txt b/one.txt[0m
+index abc123..def456 100644[0m
+[38;2;248;81;73m--- a/one.txt[0m
+[38;2;63;185;80m+++ b/one.txt[0m
+@@ -1,2 +1,2 @@[0m
+[38;2;248;81;73m-hello[0m
+[38;2;63;185;80m+hello world[0m
+ unchanged[0m
+diff --git a/two.txt b/two.txt[0m
+index 111111..222222 100644[0m
+[38;2;248;81;73m--- a/two.txt[0m
+[38;2;63;185;80m+++ b/two.txt[0m
+@@ -1,1 +1,2 @@[0m
+ line1[0m
+[38;2;63;185;80m+line2[0m
+[38;2;139;148;158m────────────────────────────────────────────────────────────[0m

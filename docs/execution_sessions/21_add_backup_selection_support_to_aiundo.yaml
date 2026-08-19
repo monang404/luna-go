@@ -1,0 +1,91 @@
+session:
+  id: SESSION-21
+  title: Add backup-selection support to aiundo
+  category: cli
+  priority: P3
+  complexity: S
+  weight: 2
+objective: >-
+  Add an optional backup-selection flag/prompt to aiundo so the user can restore from an older backup,
+  not just the most recent .bak.* file by mtime.
+backlog_items:
+- id: CLI-010
+  role: primary
+root_causes: []
+depends_on: []
+blocks: []
+boundary_rationale: >-
+  CLI-010 is genuine functional enhancement work (not naming/doc) confined to one command; kept as its
+  own session since it needs real integration testing distinct from the naming-cleanup batch (Session
+  20).
+why_not_more:
+- No other backlog item touches aiundo's backup-selection logic.
+why_not_less:
+- The feature (listing + selecting among available backups) cannot usefully be split smaller.
+scope:
+  include:
+  - Add optional backup-selection flag/prompt to aiundo, listing available .bak.* files
+  exclude:
+  - Changes to how backups are created (out of scope, this is restore-side only)
+affected_files:
+- 35-files/15-aiundo.zsh
+affected_functions:
+- aiundo
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for Add backup-selection support to aiundo
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: User can select from multiple available backups, not just the latest
+  verification: INTEGRATION
+tests:
+  targeted:
+  - Create 3+ backups for a file, run aiundo with the new selection flag, confirm the chosen (non-latest)
+    backup is restored
+regression_checks:
+- Default aiundo invocation (no flag) still restores the latest backup, matching current behavior
+risk:
+  level: low
+  blast_radius: low
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-21.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-22
+  notes: >-
+    This session's changes must leave the application fully usable. No downstream session strictly depends
+    on this one; safe to run in any order relative to independent sessions.

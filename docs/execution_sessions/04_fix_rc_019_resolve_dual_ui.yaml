@@ -1,0 +1,118 @@
+session:
+  id: SESSION-04
+  title: Fix RC-019 — resolve dual ui_palette() collision and remove related dead UI code
+  category: ui
+  priority: P0
+  complexity: S
+  weight: 2
+objective: >-
+  Eliminate the two colliding `ui_palette()` definitions by renaming the generic version, add a load-time
+  duplicate-function-name self-check, and remove the related dead UI components (`ui_card_*`, `ui_approve`)
+  identified alongside it.
+backlog_items:
+- id: UX-002
+  role: primary
+- id: UX-019
+  role: related
+root_causes:
+- RC-019
+depends_on: []
+blocks: []
+boundary_rationale: >-
+  UX-002 and UX-019 both concern the same file/subsystem (60-ui/components/) and UX-019 explicitly names
+  UX-002 as a Related ID for combined dead-code cleanup. Renaming the generic ui_palette (UX-002's fix)
+  and removing the genuinely-dead ui_card_*/ui_approve components (UX-019) can be verified together with
+  one duplicate-function-name grep pass.
+why_not_more:
+- UX-007 (unified command registry) is a separate, larger foundational change affecting the palette's
+  data source, not its name collision, and is scheduled as its own session (22) since it has a different
+  root cause (RC-008).
+why_not_less:
+- UX-002's fix alone would leave other known-dead components in the same file family undocumented; bundling
+  avoids a second near-identical checkpoint for trivial additional work.
+scope:
+  include:
+  - Rename 60-ui/components/palette.zsh's generic ui_palette() to ui_palette_generic (or remove if confirmed
+    unused)
+  - Add a startup/CI self-check detecting duplicate function names across sourced files
+  - Remove or clearly annotate ui_card_*, ui_approve as reserved-for-future-use
+  exclude:
+  - Any change to 60-ui/screens/palette.zsh's 17-command behavior itself
+  - UX-007's command-registry consolidation (separate session)
+affected_files:
+- 60-ui/components/palette.zsh
+- 60-ui/screens/palette.zsh
+- 60-ui/components/cards.zsh
+- 60-ui/components/approval.zsh
+affected_functions:
+- ui_palette
+- ui_card_*
+- ui_approve
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for resolve dual ui_palette() collision and remove related
+    dead UI code
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: Only one function named ui_palette exists in the codebase after the fix
+  verification: STATIC
+- id: AC-02
+  description: Command Palette continues to render all 17 hardcoded commands correctly
+  verification: MANUAL
+- id: AC-03
+  description: A startup self-check / CI grep confirms no duplicate function names exist repo-wide
+  verification: REGRESSION
+- id: AC-04
+  description: Dead components (ui_card_*, ui_approve) are removed or explicitly annotated as reserved
+  verification: STATIC
+tests:
+  targeted:
+  - grep -rhn '^[a-zA-Z_][a-zA-Z0-9_]*() {' **/*.zsh duplicate-name check
+  - Manual invocation of Command Palette (/) confirms all 17 items render
+regression_checks:
+- Duplicate-function-name CI check passes with zero collisions
+risk:
+  level: low
+  blast_radius: medium
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-04.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-05
+  notes: >-
+    This session's changes must leave the application fully usable. No downstream session strictly depends
+    on this one; safe to run in any order relative to independent sessions.

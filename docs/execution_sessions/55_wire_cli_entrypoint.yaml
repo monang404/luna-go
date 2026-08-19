@@ -1,0 +1,118 @@
+session:
+  id: SESSION-55
+  title: Wiring CLI entrypoint (cobra) & alias parity
+  category: integration
+  priority: P1
+  complexity: M
+  weight: 3
+objective: Satukan semua package (config, permission, tools, llmclient, agent, subagent, ui, chat, codeproject,
+  filepatch, workflow) jadi satu binary CLI dengan `cobra`, subcommand meniru semua alias `ai*` yang ada
+  di zshrc/plugin lama.
+backlog_items:
+- id: MIG-15
+  role: primary
+root_causes: []
+depends_on:
+- SESSION-53
+- SESSION-54
+blocks:
+- SESSION-56
+boundary_rationale: Ini titik di mana seluruh package internal/ yang sudah diporting (fase 1-14) akhirnya
+  disatukan jadi satu binary yang bisa benar-benar dipanggil user sebagai pengganti fungsi zsh — logis
+  jadi sesi tersendiri setelah semua fondasi & fitur selesai, sebelum masuk ke verifikasi paralel.
+why_not_more:
+- Belum ada instalasi/distribusi end-user baru di sesi ini (itu SESSION-56) — fokus murni ke wiring command-command
+  yang sudah ada jadi subcommand `cobra` yang bisa dijalankan lokal (`go run` / binary hasil build).
+why_not_less:
+- Semua subcommand perlu diwiring dalam satu sesi karena command palette/router (SESSION-53) sudah didesain
+  sebagai satu registry terpadu — mewiring sebagian saja akan meninggalkan command lain tidak terjangkau
+  tanpa manfaat verifikasi incremental yang jelas.
+scope:
+  include:
+  - Struktur `cobra` command tree, satu subcommand per alias lama (`aiask`, `aiagent`, `aipatch`, `aicommit`,
+    `aiundo`, dst.) plus flag yang setara
+  - Root command menampilkan help/menu setara `20-menu.zsh`
+  - Startup self-check setara `90-selfcheck.zsh` (cek API key ada, dsb.) sebelum command jalan
+  - Mapping 1:1 nama alias lama -> nama subcommand baru, didokumentasikan di README migrasi
+  exclude:
+  - Instalasi/distribusi (itu SESSION-56)
+  - Fitur baru di luar yang sudah ada di zsh_bagas lama
+source_zsh_files:
+- 10-plugins/*.zsh (alias definitions)
+- source/.zshrc
+target_go_files:
+- cmd/zshbagas/main.go
+- cmd/zshbagas/commands/*.go
+subtasks:
+- id: '01'
+  title: Analisis file zsh sumber & rancang struct/interface Go padanannya
+  type: analysis
+  required: true
+- id: '02'
+  title: Implementasi package Go sesuai scope sesi ini
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrasikan dengan package lain yang sudah ada & pastikan tidak ada caller yang terlewat
+  type: integration
+  required: true
+- id: '04'
+  title: Tulis & jalankan unit test untuk tiap acceptance criterion
+  type: verification
+  required: true
+- id: '05'
+  title: Jalankan regression check (go vet, go build, existing test suite)
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md dan MIGRATION_TRACEABILITY.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Buat checkpoint penuh repo (source zsh + module Go baru)
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: Semua alias di 10-plugins/*.zsh punya subcommand `cobra` padanan yang terdaftar & bisa
+    dipanggil
+  verification: STATIC
+- id: AC-02
+  description: '`zshbagas --help` menampilkan seluruh command dengan deskripsi, setara `20-menu.zsh`'
+  verification: MANUAL
+- id: AC-03
+  description: Startup self-check menolak jalan (dengan pesan jelas) kalau tidak ada API key provider
+    manapun ter-set
+  verification: UNIT
+- id: AC-04
+  description: Minimal 5 command inti (`ask`, `agent`, `patch`, `commit`, `undo`) berhasil dites manual
+    end-to-end lewat binary hasil build
+  verification: MANUAL
+tests:
+  targeted:
+  - 'Checklist manual: jalankan tiap subcommand dengan `--help`, pastikan tidak ada yang crash/panic'
+  - End-to-end manual test 5 command inti dengan skenario nyata
+  - Diff daftar alias lama vs daftar subcommand baru, pastikan tidak ada yang terlewat
+regression_checks:
+- Rerun `go vet ./...` dan seluruh test suite package internal/ setelah wiring (pastikan wiring tidak
+  mengubah logic apapun)
+risk:
+  level: medium
+  blast_radius: high
+  rollback: moderate
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-55.zip
+  contains: entire repository (source zsh_bagas + go/ tree in progress)
+notes: Setelah sesi ini, binary Go sudah bisa dipakai harian sebagai pengganti zsh_bagas — ini jadi gerbang
+  masuk ke fase parallel-run (SESSION-56).
+handoff:
+  next_session: SESSION-56
+  notes: SESSION-56 menjalankan binary hasil sesi ini berdampingan dengan zsh_bagas lama untuk verifikasi
+    paralel sebelum cutover.

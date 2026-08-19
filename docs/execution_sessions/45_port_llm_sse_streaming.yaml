@@ -1,0 +1,115 @@
+session:
+  id: SESSION-45
+  title: Port SSE streaming call + line parser ke internal/llmclient
+  category: networking
+  priority: P1
+  complexity: L
+  weight: 5
+objective: Port 55-request_streaming.zsh dan 56-sse_line_parser.zsh menjadi jalur streaming Go pakai bufio.Scanner
+  di atas http.Response.Body, dengan context cancellation saat user interrupt (Ctrl+C).
+backlog_items:
+- id: MIG-05
+  role: primary
+root_causes: []
+depends_on:
+- SESSION-44
+blocks:
+- SESSION-46
+- SESSION-49
+boundary_rationale: SSE streaming adalah bagian teknis paling berisiko di seluruh migrasi (disebutkan
+  eksplisit di rencana implementasi) — diberi sesi tersendiri dengan complexity L supaya dapat waktu &
+  fixture test yang cukup, dipisah dari blocking call yang sudah stabil di SESSION-44.
+why_not_more:
+- Belum termasuk circuit breaker/retry di jalur streaming (itu SESSION-46) — sesi ini fokus murni ke parsing
+  byte stream jadi event yang benar, termasuk kasus chunk terpotong di tengah baris.
+why_not_less:
+- Streaming call dan SSE line parser tidak bisa dipisah sesi karena satu-satunya cara memverifikasi parser
+  benar adalah menjalankannya di atas stream nyata (bukan cuma unit test string statis) — keduanya perlu
+  diverifikasi bersamaan lewat fixture recorded response.
+scope:
+  include:
+  - func CallStreaming(ctx, provider, payload) (<-chan Event, error)
+  - 'SSE line parser: handle ''data: '' prefix, ''[DONE]'' sentinel, chunk terpotong di batas buffer'
+  - context.Context cancellation -> tutup response body & channel dengan bersih saat user interrupt
+  - Rekam >=3 fixture response stream asli (Groq/Gemini/Cerebras) buat replay test tanpa network
+  exclude:
+  - Circuit breaker/retry logic di sekitar streaming (itu SESSION-46)
+  - Rendering token yang di-stream ke layar (itu bagian UI/chat, SESSION-52+)
+source_zsh_files:
+- 30-ai/10-core/55-request_streaming.zsh
+- 30-ai/10-core/56-sse_line_parser.zsh
+target_go_files:
+- internal/llmclient/streaming.go
+- internal/llmclient/sse.go
+subtasks:
+- id: '01'
+  title: Analisis file zsh sumber & rancang struct/interface Go padanannya
+  type: analysis
+  required: true
+- id: '02'
+  title: Implementasi package Go sesuai scope sesi ini
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrasikan dengan package lain yang sudah ada & pastikan tidak ada caller yang terlewat
+  type: integration
+  required: true
+- id: '04'
+  title: Tulis & jalankan unit test untuk tiap acceptance criterion
+  type: verification
+  required: true
+- id: '05'
+  title: Jalankan regression check (go vet, go build, existing test suite)
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md dan MIGRATION_TRACEABILITY.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Buat checkpoint penuh repo (source zsh + module Go baru)
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: Parser menghasilkan event yang identik untuk fixture stream utuh vs stream yang di-chunk
+    manual jadi potongan kecil
+  verification: UNIT
+- id: AC-02
+  description: '''[DONE]'' sentinel menghentikan channel dengan bersih tanpa error'
+  verification: UNIT
+- id: AC-03
+  description: Ctrl+C (context cancel) saat streaming aktif menutup koneksi tanpa goroutine leak
+  verification: UNIT
+- id: AC-04
+  description: Replay fixture asli dari 3 provider berbeda menghasilkan text akhir yang sama dengan hasil
+    zsh lama untuk prompt sama
+  verification: MANUAL
+tests:
+  targeted:
+  - Fixture replay test dengan stream dipotong di berbagai byte boundary (simulasi TCP chunking nyata)
+  - Goroutine leak test pakai goleak setelah context cancel
+  - Manual streaming call nyata ke provider asli, bandingkan output akhir vs run zsh_bagas lama untuk
+    prompt identik
+regression_checks:
+- 'Load test ringan: streaming response panjang (>5000 token) tidak bikin memory growth tak wajar'
+risk:
+  level: high
+  blast_radius: medium
+  rollback: moderate
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-45.zip
+  contains: entire repository (source zsh_bagas + go/ tree in progress)
+notes: Sesi paling teknis di seluruh migrasi. Kalau waktu terbatas, prioritaskan fixture test chunk-boundary
+  di atas semua acceptance criteria lain — itu sumber bug paling umum di SSE parser custom.
+handoff:
+  next_session: SESSION-46
+  notes: SESSION-46 akan membungkus CallStreaming ini dengan circuit breaker & retry; SESSION-49 (agent
+    loop) baru pakai jalur ini end-to-end.

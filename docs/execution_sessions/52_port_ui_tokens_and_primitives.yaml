@@ -1,0 +1,119 @@
+session:
+  id: SESSION-52
+  title: Port design tokens, colors, box, diff colorizer ke internal/ui
+  category: ui
+  priority: P1
+  complexity: M
+  weight: 3
+objective: Port 02-ui_colors.zsh, 05-ui_box.zsh, 06-ui_diff.zsh, dan 00-ui_text.zsh menjadi package Go
+  internal/ui dengan design token (AI_C_*) sebagai const/struct, plus NO_COLOR compliance & unicode/ASCII
+  fallback sesuai RENDERING_CONTRACT.md.
+backlog_items:
+- id: MIG-12
+  role: primary
+root_causes: []
+depends_on:
+- SESSION-40
+blocks:
+- SESSION-53
+boundary_rationale: Design token & primitives (warna, box drawing, diff colorizer) adalah fondasi yang
+  dipakai oleh SEMUA screen & component di SESSION-53 — perlu selesai & byte-parity dulu dengan RENDERING_CONTRACT.md
+  sebelum screen nyata dibangun di atasnya, supaya tidak ada rework visual besar belakangan.
+why_not_more:
+- Belum ada screen/component composite di sesi ini (itu SESSION-53) — sesi ini murni primitives tingkat
+  rendah (cetak warna, gambar box, warnai diff).
+why_not_less:
+- Colors, box, diff colorizer, dan text tidak bisa dipisah sesi karena diff colorizer secara langsung
+  memakai token warna & fungsi text wrapping yang sama — memisahnya bikin diff colorizer tidak bisa diverifikasi
+  visual secara realistis.
+scope:
+  include:
+  - Const/struct token AI_C_* (semua nama & escape code sama persis dengan 02-ui_colors.zsh)
+  - 'NO_COLOR compliance: deteksi env var NO_COLOR, semua fungsi warna jadi no-op kalau di-set'
+  - Box drawing dengan fallback unicode -> ASCII sesuai RENDERING_CONTRACT.md
+  - 'Diff colorizer: pewarnaan +/- line, konteks, header, identik dengan 06-ui_diff.zsh untuk fixture
+    diff yang sama'
+  exclude:
+  - Screen composite & layout (home/agent/palette/report) — itu SESSION-53
+  - Command registry & routing — itu SESSION-53
+source_zsh_files:
+- 30-ai/60-ui/00-ui_text.zsh
+- 30-ai/60-ui/02-ui_colors.zsh
+- 30-ai/60-ui/05-ui_box.zsh
+- 30-ai/60-ui/06-ui_diff.zsh
+target_go_files:
+- internal/ui/tokens.go
+- internal/ui/box.go
+- internal/ui/diff.go
+- internal/ui/text.go
+subtasks:
+- id: '01'
+  title: Analisis file zsh sumber & rancang struct/interface Go padanannya
+  type: analysis
+  required: true
+- id: '02'
+  title: Implementasi package Go sesuai scope sesi ini
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrasikan dengan package lain yang sudah ada & pastikan tidak ada caller yang terlewat
+  type: integration
+  required: true
+- id: '04'
+  title: Tulis & jalankan unit test untuk tiap acceptance criterion
+  type: verification
+  required: true
+- id: '05'
+  title: Jalankan regression check (go vet, go build, existing test suite)
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md dan MIGRATION_TRACEABILITY.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Buat checkpoint penuh repo (source zsh + module Go baru)
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: Semua token AI_C_* menghasilkan escape code ANSI yang identik dengan versi zsh untuk terminal
+    yang sama
+  verification: UNIT
+- id: AC-02
+  description: NO_COLOR=1 membuat seluruh output tanpa escape code ANSI sama sekali
+  verification: UNIT
+- id: AC-03
+  description: Box drawing fallback ke ASCII saat locale/terminal tidak mendukung unicode, sesuai RENDERING_CONTRACT.md
+  verification: UNIT
+- id: AC-04
+  description: Diff colorizer menghasilkan output byte-identik dengan 06-ui_diff.zsh untuk >=5 fixture
+    diff
+  verification: UNIT
+tests:
+  targeted:
+  - 'Golden-file test: render tiap primitive, bandingkan byte-for-byte dengan capture output zsh lama'
+  - Test NO_COLOR on/off untuk semua fungsi warna
+  - Test box/diff dengan >=5 fixture representatif (diff kecil, diff besar, box nested, dst.)
+regression_checks:
+- Cross-check manual ke RENDERING_CONTRACT.md poin per poin, tandai kalau ada spec yang belum tercakup
+  fixture
+risk:
+  level: medium
+  blast_radius: medium
+  rollback: moderate
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-52.zip
+  contains: entire repository (source zsh_bagas + go/ tree in progress)
+notes: Ini sesi dengan risiko UX-fidelity tertinggi — banyak sesi UX-* historis di project zsh sudah menghabiskan
+  effort besar men-tuning detail ini, jangan sampai regresi diam-diam.
+handoff:
+  next_session: SESSION-53
+  notes: SESSION-53 membangun component & screen composite di atas primitives sesi ini.

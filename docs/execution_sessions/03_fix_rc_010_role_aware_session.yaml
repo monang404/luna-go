@@ -1,0 +1,113 @@
+session:
+  id: SESSION-03
+  title: Fix RC-010 — role-aware session trim to prevent role-alternation corruption
+  category: reliability
+  priority: P0
+  complexity: M
+  weight: 3
+objective: >-
+  Make `_ai_trim_session` role-aware so that after slicing, the persisted session always begins (after
+  the system message) with a `user` message, fixing the role-alternation corruption that occurs after
+  ~15 turns of `ail` session chat while preserving the currently-correct agent-loop trim behavior.
+backlog_items:
+- id: BUG-005
+  role: primary
+root_causes:
+- RC-010
+depends_on: []
+blocks:
+- SESSION-37
+- SESSION-42
+boundary_rationale: >-
+  BUG-005 is a self-contained Critical data-integrity defect in one shared function (`_ai_trim_session`)
+  consumed by two callers with different append parity. The fix must be conditional/parity-aware and is
+  fully scoped to this one function plus its regression test; no other backlog item shares this mechanism.
+why_not_more:
+- VERIFY-010 (live-provider confirmation of user-facing impact) is a separate verification-only session
+  (Session 37) since it requires live API access and should run after this fix lands, not block it.
+why_not_less:
+- The fix cannot be split further — role-parity detection and the corrective extra-drop must land together
+  or the bug remains reproducible.
+scope:
+  include:
+  - Make _ai_trim_session detect whether messages[1:] after slicing starts with 'assistant'; if so, drop
+    one additional leading element
+  - Ensure agent-loop (odd-parity) consumer shows no behavior change
+  - Add automated round-trip regression test (append/trim x30+ turns)
+  exclude:
+  - Changes to _ai_session_sanitize_file (label-stripping is unrelated)
+  - Any provider-facing behavior beyond correcting role order
+affected_files:
+- .zsh_bagas/30-ai/10-core/60-session_trim.zsh
+- .zsh_bagas/30-ai/20-chat/10-session_ask.zsh
+affected_functions:
+- _ai_trim_session
+- _ai_session_ask
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for role-aware session trim to prevent role-alternation
+    corruption
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: After 20+ simulated ail turns, the first message after system is always 'user'
+  verification: UNIT
+- id: AC-02
+  description: Agent-loop trim behavior (currently correct/odd-parity) shows no regression
+  verification: REGRESSION
+- id: AC-03
+  description: Round-trip test (append->trim, repeated 30+ times) never produces two consecutive same-role
+    messages
+  verification: UNIT
+tests:
+  targeted:
+  - Python/zsh simulation replaying the exact _ai_session_ask append pattern for 50 turns
+  - Agent-loop append pattern replayed for 50 steps, confirm unchanged
+regression_checks:
+- Automated test asserting role alternation holds at every trim boundary for both consumers
+risk:
+  level: medium
+  blast_radius: high
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-03.zip
+  contains: entire repository
+notes: >-
+  Live-provider confirmation tracked separately as VERIFY-010 (Session 37).
+handoff:
+  next_session: SESSION-04
+  notes: >-
+    This session's changes must leave the application fully usable. Sessions SESSION-37, SESSION-42 depend
+    on this session's checkpoint as their safe baseline.

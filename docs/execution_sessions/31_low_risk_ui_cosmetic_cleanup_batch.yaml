@@ -1,0 +1,122 @@
+session:
+  id: SESSION-31
+  title: Low-risk UI cosmetic cleanup batch
+  category: ui
+  priority: P3
+  complexity: S
+  weight: 1
+objective: >-
+  Batch-fix five independent, trivial Low-severity UI cosmetic items: sync the documented vs. actual default
+  verbosity level, add a next-step hint to aiplan, replace the raw emoji in aicl with the standard icon
+  system, align install.sh's iconography (or document it as an intentional exception), and document the
+  Indonesian/English language convention for Help/Palette messages.
+backlog_items:
+- id: UX-006
+  role: primary
+- id: UX-010
+  role: primary
+- id: UX-011
+  role: primary
+- id: UX-012
+  role: primary
+- id: UX-018
+  role: primary
+root_causes: []
+depends_on: []
+blocks: []
+boundary_rationale: >-
+  All five are independent, trivial, no-shared-root-cause Low-severity cosmetic/documentation items with
+  no data-loss risk and no overlapping affected files beyond the general UI surface. Per the underloaded-session
+  guidance, checkpoint overhead for 5 separate one-line changes would dwarf the actual work; none conflict
+  with each other and each has a trivial, independently-verifiable acceptance criterion.
+why_not_more:
+- UX-019 (dead UI code) was already folded into Session 04 since it is directly Related to UX-002; UX-005/UX-016/UX-004/UX-008
+  are larger or root-cause-linked items already scheduled in their own sessions.
+why_not_less:
+- Each individual item is a 1-3 line change; splitting into 5 sessions would each be well below the realistic
+  minimum viable session size.
+scope:
+  include:
+  - Sync default-verbosity code comment and CARA-PAKAI.md to state the same level
+  - 'Add a ''Lanjut: ...'' next-step hint to aiplan matching aispec/aiprompt'
+  - Replace raw ❌ emoji in aicl with _ai_ui_line "✗" pattern
+  - Align install.sh iconography with 60-ui/'s icon system, or document as intentional exception
+  - Document a one-line Indonesian/English language policy in CARA-PAKAI.md/CONTRIBUTING.md
+  exclude:
+  - Any functional behavior change beyond the named cosmetic/documentation items
+affected_files:
+- 60-ui/components/verbosity.zsh
+- CARA-PAKAI.md
+- 40-workflow/05-aiplan.zsh
+- 20-chat/00-quick_chat.zsh
+- install.sh
+affected_functions: []
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for Low-risk UI cosmetic cleanup batch
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: Code and docs state the same default verbosity level
+  verification: STATIC
+- id: AC-02
+  description: aiplan output includes a next-step hint matching aispec/aiprompt's pattern
+  verification: STATIC
+- id: AC-03
+  description: No raw emoji remains in aicl's failure path
+  verification: STATIC
+- id: AC-04
+  description: install.sh iconography aligned or explicitly documented as an intentional exception
+  verification: STATIC
+- id: AC-05
+  description: Language policy is documented
+  verification: STATIC
+tests:
+  targeted:
+  - Static review of each of the 5 changed locations against its acceptance criterion
+regression_checks:
+- No functional command behavior changes; purely cosmetic/documentation
+risk:
+  level: low
+  blast_radius: low
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-31.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-32
+  notes: >-
+    This session's changes must leave the application fully usable. No downstream session strictly depends
+    on this one; safe to run in any order relative to independent sessions.

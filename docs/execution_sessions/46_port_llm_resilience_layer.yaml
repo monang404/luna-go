@@ -1,0 +1,117 @@
+session:
+  id: SESSION-46
+  title: Port circuit breaker, retry, token budget, session trim ke internal/llmclient
+  category: networking
+  priority: P1
+  complexity: M
+  weight: 3
+objective: Port 40-circuit_breaker.zsh, 44-retry_decision.zsh, 42-token_budget.zsh, dan 60-session_trim.zsh
+  menjadi lapisan resilience yang membungkus CallBlocking/CallStreaming dari SESSION-44/45.
+backlog_items:
+- id: MIG-06
+  role: primary
+root_causes: []
+depends_on:
+- SESSION-44
+- SESSION-45
+blocks:
+- SESSION-49
+boundary_rationale: Keempat file ini sama-sama lapisan 'keputusan' di sekitar call HTTP inti (kapan retry,
+  kapan buka circuit, kapan trim history) — logicnya mirip (state + threshold + keputusan), koheren dijadikan
+  satu sesi setelah jalur HTTP dasarnya (44/45) sudah ada dan stabil.
+why_not_more:
+- Belum wiring ke agent loop nyata (itu SESSION-49) — sesi ini menyediakan fungsi keputusan yang murni
+  & testable, dipanggil sebagai unit terpisah dulu.
+why_not_less:
+- Circuit breaker dan retry decision saling bergantung erat (retry decision mengecek state circuit breaker
+  sebelum retry) sehingga tidak realistis dipisah sesi; token budget & session trim juga satu keluarga
+  masalah (menjaga context tetap dalam limit) yang berbagi struct config yang sama.
+scope:
+  include:
+  - Struct CircuitBreaker{state, failureCount, threshold, cooldown} + method Allow()/RecordSuccess()/RecordFailure()
+  - func ShouldRetry(err, attempt, maxAttempts) (bool, backoff time.Duration)
+  - func EstimateTokens(text) int + func TrimToFit(messages, budget) []Message
+  - Wiring opsional (helper) yang membungkus CallBlocking/CallStreaming dengan retry+circuit breaker
+  exclude:
+  - Perubahan behavior threshold/limit numerik dari nilai default yang sudah ada di zsh (port nilai apa
+    adanya)
+source_zsh_files:
+- 30-ai/10-core/40-circuit_breaker.zsh
+- 30-ai/10-core/44-retry_decision.zsh
+- 30-ai/10-core/42-token_budget.zsh
+- 30-ai/10-core/60-session_trim.zsh
+target_go_files:
+- internal/llmclient/circuitbreaker.go
+- internal/llmclient/retry.go
+- internal/llmclient/tokenbudget.go
+- internal/llmclient/sessiontrim.go
+subtasks:
+- id: '01'
+  title: Analisis file zsh sumber & rancang struct/interface Go padanannya
+  type: analysis
+  required: true
+- id: '02'
+  title: Implementasi package Go sesuai scope sesi ini
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrasikan dengan package lain yang sudah ada & pastikan tidak ada caller yang terlewat
+  type: integration
+  required: true
+- id: '04'
+  title: Tulis & jalankan unit test untuk tiap acceptance criterion
+  type: verification
+  required: true
+- id: '05'
+  title: Jalankan regression check (go vet, go build, existing test suite)
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md dan MIGRATION_TRACEABILITY.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Buat checkpoint penuh repo (source zsh + module Go baru)
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: Circuit breaker membuka (stop calling) setelah N kegagalan beruntun sesuai threshold di
+    40-circuit_breaker.zsh
+  verification: UNIT
+- id: AC-02
+  description: Retry decision menghormati max attempts & backoff yang sama dengan retry_decision.zsh
+  verification: UNIT
+- id: AC-03
+  description: TrimToFit memangkas history sampai di bawah token budget tanpa merusak urutan pesan system/terbaru
+  verification: UNIT
+- id: AC-04
+  description: Estimasi token dalam toleransi wajar (misal +/-10%) dibanding penghitungan token_budget.zsh
+    lama
+  verification: UNIT
+tests:
+  targeted:
+  - Table-driven test circuit breaker state transitions (closed->open->half-open->closed)
+  - Test TrimToFit dengan history panjang buatan, pastikan system prompt tidak pernah terpangkas
+  - Bandingkan hasil EstimateTokens vs implementasi lama untuk >=10 sample teks
+regression_checks:
+- Pastikan retry tidak pernah retry error non-transient (mis. 401 auth error) — parity dengan retry_decision.zsh
+risk:
+  level: medium
+  blast_radius: medium
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-46.zip
+  contains: entire repository (source zsh_bagas + go/ tree in progress)
+notes: Setelah sesi ini, seluruh internal/llmclient sudah punya jalur request+resilience lengkap dan bisa
+  dipakai agent loop di SESSION-49 tanpa perlu lagi bolak-balik ke modul network.
+handoff:
+  next_session: SESSION-47
+  notes: SESSION-49 (agent ReAct loop) adalah konsumen utama seluruh internal/llmclient (44+45+46).

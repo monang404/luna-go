@@ -1,0 +1,110 @@
+session:
+  id: SESSION-02
+  title: Fix RC-002 — command-substitution side effect in dangerous-command classifier
+  category: security
+  priority: P0
+  complexity: S
+  weight: 3
+objective: >-
+  Prevent `_ai_agent_is_dangerous`'s `${(z)cmd}` tokenization from executing `$(...)`/backtick command
+  substitution as a side effect, by applying the same pre-filter already used in `_ai_yolo_shell_safe`
+  before tokenization occurs.
+backlog_items:
+- id: SEC-002
+  role: primary
+root_causes:
+- RC-002
+depends_on: []
+blocks: []
+boundary_rationale: >-
+  SEC-002 is a self-contained security defect isolated to one function (`_ai_agent_is_dangerous` in 50-agent/00-policy.zsh)
+  with one clear remediation (reuse the existing `_ai_yolo_shell_safe` pre-filter). It is a pure security
+  boundary fix and is deliberately not combined with any UX/documentation work per the security boundary
+  rule.
+why_not_more:
+- The longer-term recommendation to extract one shared `_ai_shell_tokenize()` helper is optional/strategic,
+  not required for this fix, and would touch `_ai_yolo_shell_safe` itself — a currently-correct function
+  — which would expand blast radius without acceptance-critical benefit; deferred as a DISCOVERED_DURING_SESSION
+  note if the agent judges it trivial and safe.
+why_not_less:
+- The fix cannot be scoped smaller than 'add pre-filter before ${(z)cmd} call' without leaving the side-effect-execution
+  vulnerability partially open.
+scope:
+  include:
+  - Add `$`/backtick/`;`/`|`/`&`/`<`/`>`/newline pre-filter to _ai_agent_is_dangerous before its ${(z)cmd}
+    call, matching _ai_yolo_shell_safe
+  exclude:
+  - Modifying _ai_yolo_shell_safe itself
+  - Extracting a shared tokenizer helper (optional/future)
+affected_files:
+- 50-agent/00-policy.zsh
+affected_functions:
+- _ai_agent_is_dangerous
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for command-substitution side effect in dangerous-command
+    classifier
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: A command containing $(...)/backtick passed to _ai_agent_is_dangerous does not execute
+    the substitution as a classification side effect
+  verification: SECURITY
+- id: AC-02
+  description: Existing _ai_yolo_shell_safe behavior is unchanged
+  verification: REGRESSION
+- id: AC-03
+  description: Legitimate dangerous-pattern commands (without substitution) still classify correctly
+  verification: SECURITY
+tests:
+  targeted:
+  - 'Adversarial test: `echo safe -$(touch /tmp/SIDE_EFFECT_PROOF; echo x)` — assert file NOT created'
+  - Full existing dangerous-command classification test matrix re-run for regressions
+regression_checks:
+- /tmp/SIDE_EFFECT_PROOF must not exist after the classifier runs on the payload above
+risk:
+  level: medium
+  blast_radius: medium
+  rollback: easy
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-02.zip
+  contains: entire repository
+notes: >-
+  Second-highest Phase 1 priority; must not weaken existing pre-filter protections.
+handoff:
+  next_session: SESSION-03
+  notes: >-
+    This session's changes must leave the application fully usable. No downstream session strictly depends
+    on this one; safe to run in any order relative to independent sessions.

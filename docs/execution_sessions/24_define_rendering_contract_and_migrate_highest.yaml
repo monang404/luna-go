@@ -1,0 +1,115 @@
+session:
+  id: SESSION-24
+  title: Define rendering contract and migrate highest-ROI commands
+  category: ui
+  priority: P1
+  complexity: L
+  weight: 4
+objective: >-
+  Define one minimal rendering contract (AI_C_* color, unicode+ASCII fallback, NO_COLOR compliance) required
+  for any command, document it, and migrate the two highest-priority commands (aiplan, aicode/aifix) to
+  the box/state renderer that already satisfies all three properties.
+backlog_items:
+- id: UX-003
+  role: primary
+root_causes:
+- RC-007
+depends_on: []
+blocks:
+- SESSION-25
+- SESSION-26
+- SESSION-40
+boundary_rationale: >-
+  UX-003 is the foundational RC-007 fix; the audit's own consolidation (§13b) explicitly frames the 5-renderer
+  fragmentation as one architectural root cause explaining several other findings. This session defines
+  the contract and proves it via the two highest-ROI migrations; it is Large but bounded to exactly those
+  two commands to keep it realistically completable in one session.
+why_not_more:
+- UX-004 (diff colorizer) and UX-008 (progress feedback) are downstream consumers of this same root cause
+  but touch different commands/files and are scheduled as dependent sessions (25, 26) to keep this session's
+  blast radius bounded.
+why_not_less:
+- A rendering contract with zero migrated commands would be unverifiable; migrating at least the two highest-frequency×coverage-gap
+  commands (per the audit's own §18.2 ranking) is the minimum to prove the contract works in practice.
+scope:
+  include:
+  - Document the rendering contract (color via AI_C_*, unicode+ASCII fallback, NO_COLOR/AI_UI_NO_COLOR
+    compliance)
+  - Migrate aiplan to the box/state renderer pattern
+  - Migrate aicode/aifix to the same pattern
+  - Add a lint rule flagging hardcoded ANSI escapes outside 60-ui/02-ui_colors.zsh
+  exclude:
+  - Migrating any command beyond aiplan and aicode/aifix (future work, not required for this session's
+    AC)
+  - UX-004's diff-colorizer-specific fix and UX-008's progress-feedback fix (dependent sessions)
+affected_files:
+- 60-ui/*
+- 40-workflow/05-aiplan.zsh
+- 30-code/05-code.zsh
+- 30-code/45-fix.zsh
+affected_functions: []
+subtasks:
+- id: '01'
+  title: Inspect all affected files/functions for Define rendering contract and migrate highest-ROI commands
+  type: analysis
+  required: true
+- id: '02'
+  title: Implement the recommended fix(es) for this session's backlog items
+  type: implementation
+  required: true
+- id: '03'
+  title: Integrate the change with existing callers and verify no other call sites were missed
+  type: integration
+  required: true
+- id: '04'
+  title: Verify each acceptance criterion for this session's backlog items
+  type: verification
+  required: true
+- id: '05'
+  title: Run regression checks
+  type: regression
+  required: true
+- id: '06'
+  title: Update CHANGELOG.md
+  type: documentation
+  required: true
+- id: '07'
+  title: Create full repository checkpoint
+  type: checkpoint
+  required: true
+acceptance_criteria:
+- id: AC-01
+  description: A documented rendering contract exists (color/NO_COLOR/unicode-fallback requirements)
+  verification: STATIC
+- id: AC-02
+  description: aiplan and aicode/aifix are migrated to the box/state renderer pattern
+  verification: MANUAL
+- id: AC-03
+  description: No newly-merged command after this fix uses hardcoded ANSI or emoji without going through
+    the contract
+  verification: STATIC
+tests:
+  targeted:
+  - 'Lint rule test: printf ''\033['' outside 02-ui_colors.zsh flagged'
+  - Manual visual verification of aiplan and aicode/aifix under NO_COLOR=1 and default
+regression_checks:
+- aiplan and aicode/aifix functional behavior unchanged, only rendering layer touched
+risk:
+  level: medium
+  blast_radius: medium
+  rollback: moderate
+completion_state:
+  application_usable: true
+  syntax_valid: true
+  tests_passed: true
+  changelog_updated: true
+  checkpoint_created: true
+checkpoint:
+  required: true
+  filename: agent-after-SESSION-24.zip
+  contains: entire repository
+handoff:
+  next_session: SESSION-25
+  notes: >-
+    This session's changes must leave the application fully usable. Sessions SESSION-25, SESSION-26, SESSION-40
+    depend on this session's checkpoint as their safe baseline.
