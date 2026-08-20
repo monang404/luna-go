@@ -10,10 +10,11 @@ import (
 
 func newProjectCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "project <name> <description...>",
-		Aliases: []string{"aiproject"},
-		Short:   "Generate project multi-file dari nol (legacy: aiproject)",
-		Args:    cobra.MinimumNArgs(2),
+		Use:        "project <name> <description...>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aiproject"},
+		Short:      "Generate project multi-file dari nol (legacy: aiproject)",
+		Args:       cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := app.Code.Project(cmd.Context(), args[0], strings.Join(args[1:], " "))
 			if err != nil {
@@ -28,10 +29,11 @@ func newProjectCmd(app *App) *cobra.Command {
 func newBuildCmd(app *App) *cobra.Command {
 	var outputName string
 	cmd := &cobra.Command{
-		Use:     "build <app-description...>",
-		Aliases: []string{"aibuild"},
-		Short:   "Mirip project, alur lebih terpandu (legacy: aibuild)",
-		Args:    cobra.MinimumNArgs(1),
+		Use:        "build <app-description...>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aibuild"},
+		Short:      "Mirip project, alur lebih terpandu (legacy: aibuild)",
+		Args:       cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := app.Workflow.Build(cmd.Context(), outputName, strings.Join(args, " "), app.Code)
 			if err != nil {
@@ -56,9 +58,10 @@ var errNoGoPort = errors.New("luna: this command's zsh source was never ported t
 
 func newScanCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "scan",
-		Aliases: []string{"aiscan"},
-		Short:   "Scan ulang ringkasan project (NOT PORTED -- see --help)",
+		Use:        "scan",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aiscan"},
+		Short:      "Scan ulang ringkasan project (NOT PORTED -- see --help)",
 		Long: "aiscan's logic lives in 45-project.zsh, which is not assigned to any\n" +
 			"SESSION-40..54 in docs/execution_sessions/ -- no internal/ package\n" +
 			"implements it yet. This subcommand is registered (for AC-01/AC-02\n" +
@@ -70,9 +73,10 @@ func newScanCmd() *cobra.Command {
 
 func newIndexCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "index",
-		Aliases: []string{"aiindex"},
-		Short:   "Bikin/lihat index codebase (NOT PORTED -- see --help)",
+		Use:        "index",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aiindex"},
+		Short:      "Bikin/lihat index codebase (NOT PORTED -- see --help)",
 		Long: "aiindex's logic lives in 46-index.zsh, which is not assigned to any\n" +
 			"SESSION-40..54 in docs/execution_sessions/ -- no internal/ package\n" +
 			"implements it yet (internal/tools' GrepSearchTool/GlobSearchTool\n" +

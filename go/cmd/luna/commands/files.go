@@ -17,10 +17,11 @@ import (
 func newUndoCmd(app *App) *cobra.Command {
 	var selectMode bool
 	cmd := &cobra.Command{
-		Use:     "undo <file>",
-		Aliases: []string{"aiundo"},
-		Short:   "Restore dari backup .bak.* terbaru (legacy: aiundo)",
-		Args:    cobra.ExactArgs(1),
+		Use:        "undo <file>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aiundo"},
+		Short:      "Restore dari backup .bak.* terbaru (legacy: aiundo)",
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := app.Patch.Undo(cmd.Context(), args[0], selectMode, terminalChoose)
 			if err != nil {
@@ -61,9 +62,10 @@ func terminalChoose(_ context.Context, prompt string, options []string) (string,
 func newBakCleanCmd(app *App) *cobra.Command {
 	var days int
 	cmd := &cobra.Command{
-		Use:     "bakclean [root]",
-		Aliases: []string{"aibakclean"},
-		Short:   "Bersihin backup lebih tua dari N hari, default 14 (legacy: aibakclean)",
+		Use:        "bakclean [root]",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aibakclean"},
+		Short:      "Bersihin backup lebih tua dari N hari, default 14 (legacy: aibakclean)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root := "."
 			if len(args) > 0 {
@@ -83,10 +85,11 @@ func newBakCleanCmd(app *App) *cobra.Command {
 
 func newShareCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "share <file>",
-		Aliases: []string{"aishare"},
-		Short:   "Share file lewat share-sheet Android (legacy: aishare)",
-		Args:    cobra.ExactArgs(1),
+		Use:        "share <file>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aishare"},
+		Short:      "Share file lewat share-sheet Android (legacy: aishare)",
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return shareFile(cmd.Context(), args[0])
 		},

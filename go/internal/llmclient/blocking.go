@@ -266,6 +266,11 @@ func CallBlocking(ctx context.Context, candidate Candidate, payload []byte, limi
 	if err != nil {
 		return Response{}, fmt.Errorf("llmclient: building request for %s: %w", candidate.Name, err)
 	}
+
+	if candidate.Name == "anthropic" {
+		return callAnthropicBlocking(req, apiKey)
+	}
+
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 

@@ -24,6 +24,7 @@ type Message struct {
 // session) free of any dependency on SESSION-46 code that doesn't exist
 // yet. See CHANGELOG SESSION-44 entry for the full rationale.
 type PayloadOptions struct {
+	Provider    string
 	Model       string
 	MaxTokens   int
 	Temperature float64
@@ -51,6 +52,10 @@ type PayloadOptions struct {
 // empty/nil) to match jq's `--slurpfile msgs` always producing an array
 // value for the "messages" key.
 func BuildPayload(messages []Message, opts PayloadOptions) ([]byte, error) {
+	if opts.Provider == "anthropic" {
+		return buildAnthropicPayload(messages, opts)
+	}
+
 	if messages == nil {
 		messages = []Message{}
 	}

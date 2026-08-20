@@ -12,10 +12,11 @@ import (
 
 func newAgentCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "agent <goal...>",
-		Aliases: []string{"aiagent"},
-		Short:   "Agent full akses: baca/tulis file, jalankan command, looping sendiri (legacy: aiagent)",
-		Args:    cobra.MinimumNArgs(1),
+		Use:        "agent <goal...>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aiagent"},
+		Short:      "Agent full akses: baca/tulis file, jalankan command, looping sendiri (legacy: aiagent)",
+		Args:       cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -36,10 +37,11 @@ func newAgentCmd(app *App) *cobra.Command {
 
 func newDebugCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "debug <problem...>",
-		Aliases: []string{"aidebug"},
-		Short:   "Diagnosis + test/command, read-only, gak ada auto-fix (legacy: aidebug)",
-		Args:    cobra.MinimumNArgs(1),
+		Use:        "debug <problem...>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aidebug"},
+		Short:      "Diagnosis + test/command, read-only, gak ada auto-fix (legacy: aidebug)",
+		Args:       cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -66,10 +68,11 @@ func newDebugCmd(app *App) *cobra.Command {
 
 func newResearchCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "research <goal...>",
-		Aliases: []string{"airesearch"},
-		Short:   "Riset/inspeksi codebase standalone, read-only (legacy: airesearch)",
-		Args:    cobra.MinimumNArgs(1),
+		Use:        "research <goal...>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"airesearch"},
+		Short:      "Riset/inspeksi codebase standalone, read-only (legacy: airesearch)",
+		Args:       cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStandaloneSubagent(app, cmd, subagent.RoleResearcher, strings.Join(args, " "))
 		},
@@ -78,10 +81,11 @@ func newResearchCmd(app *App) *cobra.Command {
 
 func newDelegateCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "delegate <goal...>",
-		Aliases: []string{"aidelegate"},
-		Short:   "Standalone coder subagent, permission existing dapat menulis file (legacy: aidelegate)",
-		Args:    cobra.MinimumNArgs(1),
+		Use:        "delegate <goal...>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aidelegate"},
+		Short:      "Standalone coder subagent, permission existing dapat menulis file (legacy: aidelegate)",
+		Args:       cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStandaloneSubagent(app, cmd, subagent.RoleCoder, strings.Join(args, " "))
 		},

@@ -56,6 +56,25 @@ that becomes the summary returned to the caller, so make it self-contained and r
 		}
 		return prompt
 	default:
+		def := GetDefinition(role)
+		if def != nil {
+			prompt := fmt.Sprintf(`You are a subagent with role: %s.
+
+Goal:
+%s
+
+%s
+
+Respond only as JSON:
+{"thought": "...", "tool": "...", "args": {...}, "done": true|false}
+
+When done is true, put a concise description of your findings or changes in "thought" --
+that becomes the summary returned to the caller, so make it self-contained and readable on its own.`, role, subGoal, def.System)
+			if termuxContext != "" {
+				prompt += "\n\n" + termuxContext
+			}
+			return prompt
+		}
 		return ""
 	}
 }

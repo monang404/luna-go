@@ -27,9 +27,10 @@ func readStdinOrArgs(args []string) string {
 
 func newChatCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "chat [prompt...]",
-		Aliases: []string{"aic"},
-		Short:   "Chat cepat, model kelas fast (legacy: aic)",
+		Use:        "chat [prompt...]",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aic"},
+		Short:      "Chat cepat, model kelas fast (legacy: aic)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prompt := readStdinOrArgs(args)
 			res, err := app.Chat.QuickChat(cmd.Context(), prompt)
@@ -45,9 +46,10 @@ func newChatCmd(app *App) *cobra.Command {
 
 func newLongCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "long [prompt...]",
-		Aliases: []string{"aicl"},
-		Short:   "Chat model kelas smart, 5 tahap (legacy: aicl)",
+		Use:        "long [prompt...]",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aicl"},
+		Short:      "Chat model kelas smart, 5 tahap (legacy: aicl)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prompt := readStdinOrArgs(args)
 			res, err := app.Chat.LongChat(cmd.Context(), prompt)
@@ -62,9 +64,10 @@ func newLongCmd(app *App) *cobra.Command {
 
 func newShellCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "shell [prompt...]",
-		Aliases: []string{"aish"},
-		Short:   "Minta perintah shell/Termux yang aman (legacy: aish)",
+		Use:        "shell [prompt...]",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aish"},
+		Short:      "Minta perintah shell/Termux yang aman (legacy: aish)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prompt := readStdinOrArgs(args)
 			res, err := app.Chat.Aish(cmd.Context(), prompt)
@@ -80,9 +83,10 @@ func newShellCmd(app *App) *cobra.Command {
 func newAskCmd(app *App) *cobra.Command {
 	var file string
 	cmd := &cobra.Command{
-		Use:     "ask [question...]",
-		Aliases: []string{"aiask"},
-		Short:   "Tanya-jawab tunggal atas konten file/stdin (legacy: aiask)",
+		Use:        "ask [question...]",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aiask"},
+		Short:      "Tanya-jawab tunggal atas konten file/stdin (legacy: aiask)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := strings.Join(args, " ")
 			var content string
@@ -111,9 +115,10 @@ func newAskCmd(app *App) *cobra.Command {
 func newClipCmd(app *App) *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
-		Use:     "clip [query...]",
-		Aliases: []string{"aiclip"},
-		Short:   "Kirim isi clipboard ke LUNA (legacy: aiclip)",
+		Use:        "clip [query...]",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aiclip"},
+		Short:      "Kirim isi clipboard ke LUNA (legacy: aiclip)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := strings.Join(args, " ")
 			res, err := app.Chat.Clip(cmd.Context(), app.Clipboard, force, query)
@@ -130,28 +135,32 @@ func newClipCmd(app *App) *cobra.Command {
 
 func newSessionCmd(app *App) *cobra.Command {
 	root := &cobra.Command{
-		Use:   "session",
-		Short: "Sesi chat multi-turn tersimpan (start/end/list/resume/prune)",
+		Use:        "session",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Short:      "Sesi chat multi-turn tersimpan (start/end/list/resume/prune)",
 	}
 	root.AddCommand(&cobra.Command{
-		Use:   "start <name>",
-		Short: "Mulai sesi baru",
-		Args:  cobra.ExactArgs(1),
+		Use:        "start <name>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Short:      "Mulai sesi baru",
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return app.Sessions.Start(args[0])
 		},
 	})
 	root.AddCommand(&cobra.Command{
-		Use:   "end <name>",
-		Short: "Akhiri sesi",
-		Args:  cobra.ExactArgs(1),
+		Use:        "end <name>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Short:      "Akhiri sesi",
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return app.Sessions.End(args[0])
 		},
 	})
 	root.AddCommand(&cobra.Command{
-		Use:   "list",
-		Short: "Daftar sesi tersimpan",
+		Use:        "list",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Short:      "Daftar sesi tersimpan",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			names, err := app.Sessions.List()
 			if err != nil {
@@ -164,8 +173,9 @@ func newSessionCmd(app *App) *cobra.Command {
 		},
 	})
 	root.AddCommand(&cobra.Command{
-		Use:   "prune [days]",
-		Short: "Hapus sesi lebih tua dari N hari (default 14)",
+		Use:        "prune [days]",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Short:      "Hapus sesi lebih tua dari N hari (default 14)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			days := 14
 			if len(args) > 0 {
@@ -180,9 +190,10 @@ func newSessionCmd(app *App) *cobra.Command {
 		},
 	})
 	root.AddCommand(&cobra.Command{
-		Use:   "resume <name> [message...]",
-		Short: "Kirim satu giliran ke sesi (bikin sesi kalau belum ada)",
-		Args:  cobra.MinimumNArgs(1),
+		Use:        "resume <name> [message...]",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Short:      "Kirim satu giliran ke sesi (bikin sesi kalau belum ada)",
+		Args:       cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 			msg := readStdinOrArgs(args[1:])
@@ -195,9 +206,10 @@ func newSessionCmd(app *App) *cobra.Command {
 		},
 	})
 	root.AddCommand(&cobra.Command{
-		Use:   "repl <name>",
-		Short: "REPL baris-per-baris untuk sesi (Ctrl-D untuk keluar)",
-		Args:  cobra.ExactArgs(1),
+		Use:        "repl <name>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Short:      "REPL baris-per-baris untuk sesi (Ctrl-D untuk keluar)",
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return app.Chat.SessionRepl(cmd.Context(), app.Sessions, args[0], bufio.NewReader(os.Stdin), cmd.OutOrStdout())
 		},

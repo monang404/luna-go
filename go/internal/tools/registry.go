@@ -118,6 +118,11 @@ var Registry = map[string]Entry{
 		Level:       permission.LevelShell,
 		Capability:  permission.CapNetworkPublic,
 	},
+	"web_search": {
+		Description: "cari info di web via duckduckgo lite (zero-config)",
+		Level:       permission.LevelShell,
+		Capability:  permission.CapNetworkPublic,
+	},
 	"todo_write": {
 		Description: "simpan/update checklist rencana kerja sesi ini (bukan file project)",
 		Level:       permission.LevelReadonly,
@@ -127,6 +132,21 @@ var Registry = map[string]Entry{
 		Description: "baca checklist rencana kerja sesi ini saat ini",
 		Level:       permission.LevelReadonly,
 		Capability:  permission.CapSessionTodo,
+	},
+	"bash_output": {
+		Description: "baca output dari proses background (gunakan id/process_id dari run_command/exec_process dengan background: true)",
+		Level:       permission.LevelReadonly,
+		Capability:  permission.CapProcessExecute,
+	},
+	"kill_shell": {
+		Description: "hentikan (SIGTERM) proses background yang sedang berjalan",
+		Level:       permission.LevelProcess,
+		Capability:  permission.CapProcessExecute,
+	},
+	"delegate_task": {
+		Description: "delegasikan tugas spesifik ke subagent otonom (role: coder, researcher, dll)",
+		Level:       permission.LevelReadonly,
+		Capability:  permission.CapProcessExecute, // Subagents themselves manage permissions. Using ProcessExecute or Readonly. Let's stick to LevelReadonly and CapProcessExecute as a placeholder, actually the original tools used readonly.
 	},
 }
 

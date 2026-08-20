@@ -282,6 +282,13 @@ func numberFieldAsString(obj map[string]interface{}, field string) string {
 	return ""
 }
 
+func boolField(obj map[string]interface{}, field string) bool {
+	if b, ok := obj[field].(bool); ok {
+		return b
+	}
+	return false
+}
+
 func parsePositiveInt(s string) (int, bool) {
 	if s == "" {
 		return 0, false

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// --- AC-02: stripHTML against 2+ real-shaped HTML fixtures ---
+// --- AC-02: StripHTML against 2+ real-shaped HTML fixtures ---
 
 func TestStripHTML_SimplePage(t *testing.T) {
 	html := `<!DOCTYPE html>
@@ -19,13 +19,13 @@ func TestStripHTML_SimplePage(t *testing.T) {
 </body>
 </html>`
 
-	got := stripHTML(html)
+	got := StripHTML(html)
 	if strings.Contains(got, "<") || strings.Contains(got, ">") {
-		t.Errorf("stripHTML left raw tag markers: %q", got)
+		t.Errorf("StripHTML left raw tag markers: %q", got)
 	}
 	for _, want := range []string{"Welcome", "simple", "paragraph", "link"} {
 		if !strings.Contains(got, want) {
-			t.Errorf("stripHTML(simple page) missing %q, got: %q", want, got)
+			t.Errorf("StripHTML(simple page) missing %q, got: %q", want, got)
 		}
 	}
 }
@@ -42,33 +42,33 @@ func TestStripHTML_ScriptAndStyleStripped(t *testing.T) {
 </script>
 </body></html>`
 
-	got := stripHTML(html)
+	got := StripHTML(html)
 	if strings.Contains(got, "should not appear") || strings.Contains(got, "evil") || strings.Contains(got, "steal me") {
-		t.Errorf("stripHTML should have removed <script> content entirely, got: %q", got)
+		t.Errorf("StripHTML should have removed <script> content entirely, got: %q", got)
 	}
 	if strings.Contains(got, "Comic Sans") || strings.Contains(got, "color: red") {
-		t.Errorf("stripHTML should have removed <style> content entirely, got: %q", got)
+		t.Errorf("StripHTML should have removed <style> content entirely, got: %q", got)
 	}
 	if !strings.Contains(got, "Visible text.") {
-		t.Errorf("stripHTML should keep non-script/style text, got: %q", got)
+		t.Errorf("StripHTML should keep non-script/style text, got: %q", got)
 	}
 }
 
 func TestStripHTML_UnescapesEntitiesAndCollapsesWhitespace(t *testing.T) {
 	html := "<p>Tom &amp; Jerry &lt;3</p>\n\n\n\n<p>next</p>"
-	got := stripHTML(html)
+	got := StripHTML(html)
 	if !strings.Contains(got, "Tom & Jerry <3") {
-		t.Errorf("stripHTML should unescape HTML entities, got: %q", got)
+		t.Errorf("StripHTML should unescape HTML entities, got: %q", got)
 	}
 	if strings.Contains(got, "\n\n\n") {
-		t.Errorf("stripHTML should collapse runs of blank lines, got: %q", got)
+		t.Errorf("StripHTML should collapse runs of blank lines, got: %q", got)
 	}
 }
 
 func TestStripHTML_EmptyAfterStrip(t *testing.T) {
-	got := stripHTML("<script>window.x = 1;</script>")
+	got := StripHTML("<script>window.x = 1;</script>")
 	if got != "" {
-		t.Errorf("stripHTML of a script-only document should be empty, got: %q", got)
+		t.Errorf("StripHTML of a script-only document should be empty, got: %q", got)
 	}
 }
 

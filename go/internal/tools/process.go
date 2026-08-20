@@ -174,6 +174,14 @@ func (ExecProcessTool) Execute(ctx context.Context, args json.RawMessage) (Resul
 		return Result{}, fmt.Errorf("ERROR: executable '%s' belum masuk process allowlist", program)
 	}
 
+	background := boolField(obj, "background")
+
+	if background {
+		cmd := exec.Command(resolved, stringArrayField(obj, "args")...)
+		cmd.Dir = runDir
+		return startBackgroundProcess(cmd, program)
+	}
+
 	timeout := clampTimeout(obj, 30)
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -395,6 +403,16 @@ func (RunCommandTool) Execute(ctx context.Context, args json.RawMessage) (Result
 	}
 	if IsDangerousCommand(command) {
 		return Result{}, fmt.Errorf("ERROR: command diblokir sistem keamanan (destruktif)")
+	}
+
+	background := boolField(mustObject(args), "background")
+
+	if background {
+		cmd := exec.Command("zsh", "-f", "-c", "--", command)
+		if _, err := exec.LookPath("zsh"); err != nil {
+			cmd = exec.Command("sh", "-c", command)
+		}
+		return startBackgroundProcess(cmd, "shell")
 	}
 
 	cmd := exec.CommandContext(ctx, "zsh", "-f", "-c", "--", command)

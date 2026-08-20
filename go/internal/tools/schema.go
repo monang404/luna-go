@@ -118,8 +118,23 @@ var schemas = map[string]validator{
 	"web_fetch": func(a map[string]interface{}) error {
 		return requireNonEmptyString(a, "url")
 	},
+	"web_search": func(a map[string]interface{}) error {
+		return requireNonEmptyString(a, "query")
+	},
 	"todo_write": func(a map[string]interface{}) error {
 		return validateTodoItems(a)
+	},
+	"bash_output": func(a map[string]interface{}) error {
+		return requireNonEmptyString(a, "id")
+	},
+	"kill_shell": func(a map[string]interface{}) error {
+		return requireNonEmptyString(a, "id")
+	},
+	"delegate_task": func(a map[string]interface{}) error {
+		if err := requireNonEmptyString(a, "role"); err != nil {
+			return err
+		}
+		return requireNonEmptyString(a, "goal")
 	},
 }
 

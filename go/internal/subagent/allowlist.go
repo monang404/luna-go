@@ -33,12 +33,15 @@ const (
 )
 
 // IsValidRole reports whether role is one of the two roles this round
-// of the subagent system supports.
+// of the subagent system supports, OR a dynamically loaded role.
 func IsValidRole(role Role) bool {
 	switch role {
 	case RoleResearcher, RoleCoder:
 		return true
 	default:
+		if GetDefinition(role) != nil {
+			return true
+		}
 		return false
 	}
 }
@@ -73,6 +76,14 @@ func AllowedTools(role Role) []string {
 	case RoleCoder:
 		return coderTools
 	default:
+		def := GetDefinition(role)
+		if def != nil && len(def.Tools) > 0 {
+			return def.Tools
+		}
+		// If dynamically loaded but no tools specified, fallback to safe readonly list
+		if def != nil {
+			return researcherTools
+		}
 		return nil
 	}
 }

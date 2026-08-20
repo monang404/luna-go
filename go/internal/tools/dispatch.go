@@ -126,8 +126,8 @@ func (d *Dispatcher) Names() []string {
 // subagent's loop ever reaches Dispatch, exactly mirroring
 // 15-run_step.zsh's ordering ("tool valid -> role permission -> dispatch").
 func (d *Dispatcher) Subset(names []string) *Dispatcher {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	out := NewDispatcher()
 	for _, name := range names {
 		if reg, ok := d.tools[name]; ok {
@@ -135,6 +135,19 @@ func (d *Dispatcher) Subset(names []string) *Dispatcher {
 		}
 	}
 	return out
+}
+
+// ConfigureDelegateTask injects a subagent spawner into any registered
+// DelegateTaskTool instances. This breaks the circular dependency between
+// tools and subagent execution.
+func (d *Dispatcher) ConfigureDelegateTask(spawner SubagentSpawner) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, reg := range d.tools {
+		if dt, ok := reg.tool.(*DelegateTaskTool); ok {
+			dt.Spawner = spawner
+		}
+	}
 }
 
 // Dispatch mirrors _ai_tool_dispatch end-to-end: unknown-tool check,

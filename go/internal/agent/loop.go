@@ -45,6 +45,7 @@ import (
 	"sort"
 
 	"github.com/monang404/luna-go/internal/config"
+	"github.com/monang404/luna-go/internal/hooks"
 	"github.com/monang404/luna-go/internal/llmclient"
 	"github.com/monang404/luna-go/internal/tools"
 )
@@ -104,6 +105,9 @@ type Deps struct {
 	// SessionID names the checkpoint file under Store.Dir. Required
 	// whenever Store is non-nil.
 	SessionID string
+
+	// HooksRunner executes PreToolUse and PostToolUse shell hooks
+	HooksRunner *hooks.Runner
 
 	// Log receives human-readable progress lines (step start, tool
 	// result, retry, block/complete reasons) as plain strings, one per
@@ -397,26 +401,24 @@ func (rs *runState) getPlan(ctx context.Context) (brk bool, err error) {
 	return false, nil
 }
 
-// requestCompletion calls Deps.Complete (or defaultComplete when the
+// requestCompletion calls Deps.Complete (or Complete when the
 // caller left it nil) with the loop's current message history.
 func (rs *runState) requestCompletion(ctx context.Context) (llmclient.Response, error) {
 	complete := rs.Complete
 	if complete == nil {
-		complete = defaultComplete
+		complete = Complete
 	}
 	return complete(ctx, rs.Deps, rs.messages)
 }
 
-// defaultComplete ports 30-luna/10-core/50-request_blocking.zsh's
-// provider/model fallback loop (`for provider { for model { ... } }`),
+// Complete provides the standard multi-provider retry and backoff logic
 // using llmclient.SelectProviderCandidate for the provider-selection
 // fragment and llmclient.CallWithRetry for the per-model retry
-// primitive -- exactly the composition those two functions' own doc
-// comments say they exist to support "once the agent loop lands".
+// fragment (SESSION-46 / AI_MODEL_CANDIDATE + AI_CALL_WITH_RETRY).
 // task_class is always "smart" (config.TaskSmart) and mode is always
 // "json", matching _ai_agent_provider_request's own hardcoded call
 // (`_ai_agent_provider_request "$msgfile" "json" smart ...`).
-func defaultComplete(ctx context.Context, deps Deps, messages []llmclient.Message) (llmclient.Response, error) {
+func Complete(ctx context.Context, deps Deps, messages []llmclient.Message) (llmclient.Response, error) {
 	order := deps.ProviderOrder
 	if len(order) == 0 {
 		order = config.TaskProviderOrderAgent
@@ -445,6 +447,7 @@ func defaultComplete(ctx context.Context, deps Deps, messages []llmclient.Messag
 
 			buildPayload := func(mt int) ([]byte, error) {
 				return llmclient.BuildPayload(messages, llmclient.PayloadOptions{
+					Provider:        cand.Name,
 					Model:           model,
 					MaxTokens:       mt,
 					Temperature:     temp,
@@ -518,7 +521,13 @@ func (rs *runState) rejectDoneChecks() (reject bool, err error) {
 // trackAndContinue to act on, exactly like the zsh source capturing
 // $exit_status rather than aborting the loop on a failed tool call.
 func (rs *runState) runTool(ctx context.Context) {
+	if rs.HooksRunner != nil {
+		rs.HooksRunner.RunPreToolUse(ctx, rs.tool, string(rs.args))
+	}
 	result, err := rs.Dispatcher.Dispatch(ctx, rs.PermDeps, rs.tool, rs.args)
+	if rs.HooksRunner != nil {
+		rs.HooksRunner.RunPostToolUse(ctx, rs.tool, string(rs.args))
+	}
 
 	if ctx.Err() != nil {
 		rs.blockReason = fmt.Sprintf("Agent dibatalkan oleh context setelah tool '%s' (step %d)", rs.tool, rs.state.Step)

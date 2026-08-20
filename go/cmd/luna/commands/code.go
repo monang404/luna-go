@@ -10,10 +10,11 @@ import (
 
 func newCodeCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "code <output-name> <prompt...>",
-		Aliases: []string{"aicode"},
-		Short:   "Generate file kode baru dari nol (legacy: aicode)",
-		Args:    cobra.MinimumNArgs(2),
+		Use:        "code <output-name> <prompt...>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aicode"},
+		Short:      "Generate file kode baru dari nol (legacy: aicode)",
+		Args:       cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := app.Code.Code(cmd.Context(), args[0], strings.Join(args[1:], " "))
 			if err != nil {
@@ -29,10 +30,11 @@ func newCodeCmd(app *App) *cobra.Command {
 func newEditCmd(app *App) *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
-		Use:     "edit <file> <instruction...>",
-		Aliases: []string{"aipatch"},
-		Short:   "Edit file yang sudah ada lewat diff/confirm terpandu (legacy: aipatch)",
-		Args:    cobra.MinimumNArgs(2),
+		Use:        "edit <file> <instruction...>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aipatch"},
+		Short:      "Edit file yang sudah ada lewat diff/confirm terpandu (legacy: aipatch)",
+		Args:       cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := app.Patch.Patch(cmd.Context(), args[0], strings.Join(args[1:], " "), force)
 			if err != nil {
@@ -49,10 +51,11 @@ func newEditCmd(app *App) *cobra.Command {
 func newViewCmd() *cobra.Command {
 	var start, end int
 	cmd := &cobra.Command{
-		Use:     "view <file>",
-		Aliases: []string{"aicat"},
-		Short:   "Lihat isi file per-baris (legacy: aicat)",
-		Args:    cobra.ExactArgs(1),
+		Use:        "view <file>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aicat"},
+		Short:      "Lihat isi file per-baris (legacy: aicat)",
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out, err := filepatch.Cat(args[0], start, end)
 			if err != nil {
@@ -70,10 +73,11 @@ func newViewCmd() *cobra.Command {
 func newFixCmd(app *App) *cobra.Command {
 	var inspect bool
 	cmd := &cobra.Command{
-		Use:     "fix <file> <error-message...>",
-		Aliases: []string{"aifix"},
-		Short:   "Perbaiki file dari pesan error (legacy: aifix)",
-		Args:    cobra.MinimumNArgs(2),
+		Use:        "fix <file> <error-message...>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aifix"},
+		Short:      "Perbaiki file dari pesan error (legacy: aifix)",
+		Args:       cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := app.Code.Fix(cmd.Context(), args[0], strings.Join(args[1:], " "), inspect)
 			if err != nil {
@@ -92,10 +96,11 @@ func newFixCmd(app *App) *cobra.Command {
 
 func newRunCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "run <file.py>",
-		Aliases: []string{"airun"},
-		Short:   "Jalankan Python, auto-fix kalau error sampai 2x (legacy: airun)",
-		Args:    cobra.ExactArgs(1),
+		Use:        "run <file.py>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"airun"},
+		Short:      "Jalankan Python, auto-fix kalau error sampai 2x (legacy: airun)",
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := app.Code.Run(cmd.Context(), args[0])
 			fmt.Fprintln(cmd.OutOrStdout(), res.Output)
@@ -107,10 +112,11 @@ func newRunCmd(app *App) *cobra.Command {
 
 func newScrapCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "scrap <url> <task...>",
-		Aliases: []string{"aiscrap"},
-		Short:   "Scraping/riset cepat lalu rangkum (legacy: aiscrap)",
-		Args:    cobra.MinimumNArgs(2),
+		Use:        "scrap <url> <task...>",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aiscrap"},
+		Short:      "Scraping/riset cepat lalu rangkum (legacy: aiscrap)",
+		Args:       cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reply, err := app.Code.Scrap(cmd.Context(), args[0], strings.Join(args[1:], " "))
 			if err != nil {
@@ -125,9 +131,10 @@ func newScrapCmd(app *App) *cobra.Command {
 
 func newCommitCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "commit",
-		Aliases: []string{"aicommit"},
-		Short:   "Generate pesan commit dari git diff staged (legacy: aicommit)",
+		Use:        "commit",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aicommit"},
+		Short:      "Generate pesan commit dari git diff staged (legacy: aicommit)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := app.Workflow.Commit(cmd.Context())
 			if err != nil {
@@ -144,9 +151,10 @@ func newCommitCmd(app *App) *cobra.Command {
 
 func newReviewCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "review",
-		Aliases: []string{"aireview"},
-		Short:   "Review diff/perubahan terakhir, read-only (legacy: aireview)",
+		Use:        "review",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aireview"},
+		Short:      "Review diff/perubahan terakhir, read-only (legacy: aireview)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := app.Workflow.Review(cmd.Context())
 			if err != nil {

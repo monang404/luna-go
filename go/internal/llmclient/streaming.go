@@ -109,6 +109,10 @@ func CallStreaming(ctx context.Context, candidate Candidate, payload []byte, lim
 		return nil, fmt.Errorf("llmclient: no api key set for provider %q (env var %s)", candidate.Name, candidate.Provider.KeyVar)
 	}
 
+	if candidate.Name == "anthropic" {
+		return nil, fmt.Errorf("llmclient: streaming is not yet supported for Anthropic API")
+	}
+
 	timeout := resolveTimeout(limits)
 	reqCtx, cancel := context.WithTimeout(ctx, timeout)
 

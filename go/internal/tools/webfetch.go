@@ -112,7 +112,7 @@ func (WebFetchTool) Execute(ctx context.Context, args json.RawMessage) (Result, 
 
 	body, _ := io.ReadAll(resp.Body) // a partial read (e.g. connection reset mid-body) still gets stripped/capped below rather than discarded outright.
 
-	text := stripHTML(string(body))
+	text := StripHTML(string(body))
 	if text == "" {
 		text = "(kosong setelah strip HTML -- mungkin bukan halaman HTML biasa)"
 	}
@@ -178,7 +178,7 @@ var (
 // content) first, strip every remaining tag, HTML-entity-unescape,
 // collapse runs of spaces/tabs to one, collapse blank-line runs to a
 // single blank line, then trim.
-func stripHTML(raw string) string {
+func StripHTML(raw string) string {
 	raw = scriptStyleTag.ReplaceAllString(raw, " ")
 	raw = anyTag.ReplaceAllString(raw, " ")
 	raw = html.UnescapeString(raw)

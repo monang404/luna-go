@@ -1,11 +1,15 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/monang404/luna-go/internal/config"
 	"github.com/monang404/luna-go/internal/llmclient"
+	"github.com/monang404/luna-go/internal/repl"
+	"github.com/monang404/luna-go/internal/settings"
 	"github.com/monang404/luna-go/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -29,18 +33,68 @@ var noAPIKeyCommands = map[string]bool{
 // single source of truth `luna h` / `20-menu.zsh` used in zsh) rather
 // than a second hand-maintained list.
 func NewRootCmd(app *App) *cobra.Command {
+	// Flags for the default REPL mode (SESSION-60)
+	var (
+		flagPrint           bool
+		flagModel           string
+		flagPermMode        string
+		flagResume          string
+		flagContinue        bool
+		flagAddDirs         []string
+		flagOutputFormat    string
+		flagSkipPermissions bool
+	)
+
 	root := &cobra.Command{
-		Use:   "luna",
-		Short: "LUNA toolkit (Go rewrite)",
-		Long: "LUNA toolkit -- a personal LUNA-assisted dev workflow, originally\n" +
-			"a zsh plugin, now a single Go binary. Run a subcommand, or `luna h`\n" +
-			"for the full categorized list (equivalent to the old `aih`/`luna h`).\n\n" +
+		Use:   "luna [prompt]",
+		Short: "LUNA — agentic AI dev assistant",
+		Long: "LUNA — agentic AI dev assistant (Go rewrite).\n\n" +
+			"Run with no arguments to open an interactive REPL where the model\n" +
+			"autonomously chooses tools. Provide a prompt as an argument to\n" +
+			"send it as the initial message.\n\n" +
+			"Legacy subcommands (chat, code, edit, fix, ...) are still available\n" +
+			"but deprecated — use the unified REPL instead.\n\n" +
 			ui.RegistryRenderCategorized(),
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return startupSelfCheck(cmd)
 		},
+		// RunE handles the default entry point: when no subcommand matches,
+		// launch the unified agentic REPL (SESSION-60).
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, _ := os.Getwd()
+			initialPrompt := strings.Join(args, " ")
+
+			opts := repl.Options{
+				ProjectRoot:                cwd,
+				InitialPrompt:              initialPrompt,
+				PrintMode:                  flagPrint,
+				OutputFormat:               flagOutputFormat,
+				Model:                      flagModel,
+				PermissionMode:             settings.PermissionMode(flagPermMode),
+				ResumeSessionID:            flagResume,
+				ContinueLast:               flagContinue,
+				AdditionalDirs:             flagAddDirs,
+				DangerouslySkipPermissions: flagSkipPermissions,
+				Dispatcher:                 app.Dispatcher,
+				Limits:                     app.Limits,
+				Paths:                      app.Paths,
+			}
+
+			r := repl.New(opts)
+			return r.Run(context.Background())
+		},
 	}
+
+	// Register flags on the root command (available when no subcommand given)
+	root.Flags().BoolVarP(&flagPrint, "print", "p", false, "Mode headless: cetak hasil lalu keluar")
+	root.Flags().StringVar(&flagModel, "model", "", "Override model (nama atau alias, mis. sonnet)")
+	root.Flags().StringVar(&flagPermMode, "permission-mode", "", "Mode permission: default|acceptEdits|plan|bypassPermissions")
+	root.Flags().StringVar(&flagResume, "resume", "", "Lanjutkan sesi sebelumnya by session ID")
+	root.Flags().BoolVar(&flagContinue, "continue", false, "Lanjutkan sesi terakhir")
+	root.Flags().StringArrayVar(&flagAddDirs, "add-dir", nil, "Tambah direktori yang boleh diakses agent")
+	root.Flags().StringVar(&flagOutputFormat, "output-format", "text", "Format output untuk -p: text|json|stream-json")
+	root.Flags().BoolVar(&flagSkipPermissions, "dangerously-skip-permissions", false, "Bypass SEMUA permission check (berbahaya!)")
 
 	// --- Chat ---
 	root.AddCommand(newChatCmd(app))

@@ -50,6 +50,16 @@ func Providers() map[string]Provider {
 			Model:    envOr("DEEPSEEK_MODEL", "deepseek-v4-flash"),
 			KeyVar:   "DEEPSEEK_API_KEY",
 		},
+		"anthropic": {
+			Endpoint: "https://api.anthropic.com/v1/messages",
+			Model:    envOr("ANTHROPIC_MODEL", "claude-3-7-sonnet-20250219"),
+			KeyVar:   "ANTHROPIC_API_KEY",
+		},
+		"openrouter": {
+			Endpoint: "https://openrouter.ai/api/v1/chat/completions",
+			Model:    envOr("OPENROUTER_MODEL", "anthropic/claude-3.7-sonnet"),
+			KeyVar:   "OPENROUTER_API_KEY",
+		},
 	}
 }
 
@@ -63,26 +73,26 @@ func Providers() map[string]Provider {
 // AI_PROVIDERS and in every AI_TASK_PROVIDER_ORDER_* below. Preserved here
 // for parity with the zsh source, not because it's necessarily intentional
 // upstream -- flagged in the SESSION-41 changelog entry for visibility.
-var ProviderOrder = []string{"groq", "gemini", "cerebras"}
+var ProviderOrder = []string{"anthropic", "openrouter", "groq", "gemini", "cerebras"}
 
 // Task-class provider orders, ported from 05-provider_order.zsh.
 var (
 	// TaskProviderOrderFast: FAST tasks (chat, shell helper, commit msg,
 	// summarize) -- Groq/Gemini fastest for short single-turn requests.
-	TaskProviderOrderFast = []string{"groq", "gemini", "cerebras", "deepseek"}
+	TaskProviderOrderFast = []string{"groq", "gemini", "anthropic", "openrouter", "cerebras", "deepseek"}
 
 	// TaskProviderOrderSmart: SMART tasks (aiplan, aireview, aiask,
 	// aifix, luna session) -- DeepSeek primary for reasoning quality,
 	// Cerebras next for its more generous limits.
-	TaskProviderOrderSmart = []string{"deepseek", "cerebras", "gemini", "groq"}
+	TaskProviderOrderSmart = []string{"anthropic", "openrouter", "deepseek", "cerebras", "gemini", "groq"}
 
 	// TaskProviderOrderBig: BIG tasks (aiproject, aibuild, aiscrap) --
 	// long completions; same order as SMART in the zsh source.
-	TaskProviderOrderBig = []string{"deepseek", "cerebras", "gemini", "groq"}
+	TaskProviderOrderBig = []string{"anthropic", "openrouter", "deepseek", "cerebras", "gemini", "groq"}
 
 	// TaskProviderOrderAgent: AGENT tasks (aiagent ReAct loop) --
 	// DeepSeek/Cerebras for fast, accurate JSON-mode tool calls.
-	TaskProviderOrderAgent = []string{"deepseek", "cerebras", "groq", "gemini"}
+	TaskProviderOrderAgent = []string{"anthropic", "openrouter", "deepseek", "cerebras", "groq", "gemini"}
 )
 
 // TaskProviderOrder is the default alias (AI_TASK_PROVIDER_ORDER in zsh):

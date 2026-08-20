@@ -120,6 +120,7 @@ func (r *Requester) CompleteMessages(ctx context.Context, messages []llmclient.M
 		succeededProvider := false
 		for _, model := range models {
 			payload, err := llmclient.BuildPayload(messages, llmclient.PayloadOptions{
+				Provider:    candidate.Name,
 				Model:       model,
 				MaxTokens:   maxTokens,
 				Temperature: DefaultTemperature,

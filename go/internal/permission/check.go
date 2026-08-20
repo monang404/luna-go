@@ -137,6 +137,9 @@ func CheckPermission(ctx *AgentContext, cfg PermConfig, tracker *ApprovalTracker
 
 // checkWrite mirrors _ai_perm_ask_write.
 func checkWrite(ctx *AgentContext, cfg PermConfig, tracker *ApprovalTracker, ask AskFunc, req Request) (Decision, error) {
+	if cfg.WriteMode == "block" {
+		return Decision{Allow: false, Reason: "blocked by plan mode"}, nil
+	}
 	if ctx.YoloMode || cfg.WriteMode == "yolo" {
 		return Decision{Allow: true, Reason: "yolo"}, nil
 	}
@@ -165,6 +168,9 @@ func checkWrite(ctx *AgentContext, cfg PermConfig, tracker *ApprovalTracker, ask
 
 // checkProcess mirrors _ai_perm_ask_process.
 func checkProcess(ctx *AgentContext, cfg PermConfig, ask AskFunc, req Request) (Decision, error) {
+	if cfg.ProcessMode == "block" {
+		return Decision{Allow: false, Reason: "blocked by plan mode"}, nil
+	}
 	if ctx.YoloMode || cfg.ProcessMode == "yolo" {
 		return Decision{Allow: true, Reason: "yolo"}, nil
 	}
@@ -190,6 +196,9 @@ func checkProcess(ctx *AgentContext, cfg PermConfig, ask AskFunc, req Request) (
 // shell.arbitrary rather than silently allowing everything through
 // while that heuristic doesn't exist yet.
 func checkShell(ctx *AgentContext, cfg PermConfig, ask AskFunc, req Request) (Decision, error) {
+	if cfg.ShellMode == "block" {
+		return Decision{Allow: false, Reason: "blocked by plan mode"}, nil
+	}
 	yolo := ctx.YoloMode || cfg.ShellMode == "yolo"
 	if yolo && req.Capability != CapShellArbitrary {
 		return Decision{Allow: true, Reason: "yolo"}, nil

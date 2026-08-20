@@ -181,6 +181,8 @@ func fillKnownAlternatives(obj map[string]interface{}, toolName string) (json.Ra
 		fillIfMissing(obj, "pattern", "query", "search", "regex")
 	case toolName == "glob_search":
 		fillIfMissing(obj, "pattern", "glob", "name", "filename")
+	case toolName == "bash_output" || toolName == "kill_shell":
+		fillIfMissing(obj, "id", "process_id", "pid")
 	}
 	out, err := json.Marshal(obj)
 	if err != nil {

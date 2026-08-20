@@ -17,9 +17,10 @@ var depsChecklist = []string{"gum", "jq", "fzf", "fd", "bat", "curl", "tmux", "t
 
 func newDepsCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "deps",
-		Aliases: []string{"ai_check_deps"},
-		Short:   "Cek semua dependency & konfigurasi (legacy: ai_check_deps)",
+		Use:        "deps",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"ai_check_deps"},
+		Short:      "Cek semua dependency & konfigurasi (legacy: ai_check_deps)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
 			fmt.Fprintln(out, "Cek dependency LUNA environment:")
@@ -46,9 +47,10 @@ func newDepsCmd() *cobra.Command {
 
 func newTestModelsCmd(app *App) *cobra.Command {
 	return &cobra.Command{
-		Use:     "testmodels",
-		Aliases: []string{"ai_testmodels"},
-		Short:   "Test konektivitas ke semua provider (legacy: ai_testmodels)",
+		Use:        "testmodels",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"ai_testmodels"},
+		Short:      "Test konektivitas ke semua provider (legacy: ai_testmodels)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
 			providers := config.Providers()
@@ -72,9 +74,10 @@ func newTestModelsCmd(app *App) *cobra.Command {
 
 func newHCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "h",
-		Aliases: []string{"aih"},
-		Short:   "Bantuan ringkas semua subcommand (legacy: aih)",
+		Use:        "h",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aih"},
+		Short:      "Bantuan ringkas semua subcommand (legacy: aih)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Fprint(cmd.OutOrStdout(), ui.RegistryRenderCategorized())
 			return nil
@@ -84,8 +87,9 @@ func newHCmd() *cobra.Command {
 
 func newMenuCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "menu",
-		Short: "Buka LUNA Workspace (sama seperti luna tanpa argumen)",
+		Use:        "menu",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Short:      "Buka LUNA Workspace (sama seperti luna tanpa argumen)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Root().Help()
 		},
@@ -100,29 +104,32 @@ var errNotImplementedLog = fmt.Errorf(
 
 func newLogCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "log",
-		Aliases: []string{"aihist"},
-		Short:   "History chat/perintah lewat fzf (NOT PORTED -- see --help)",
-		Long:    errNotImplementedLog.Error(),
-		RunE:    func(cmd *cobra.Command, args []string) error { return errNotImplementedLog },
+		Use:        "log",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aihist"},
+		Short:      "History chat/perintah lewat fzf (NOT PORTED -- see --help)",
+		Long:       errNotImplementedLog.Error(),
+		RunE:       func(cmd *cobra.Command, args []string) error { return errNotImplementedLog },
 	}
 }
 
 func newStatsCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "stats",
-		Aliases: []string{"aistats"},
-		Short:   "Statistik pemakaian token (NOT PORTED -- see --help)",
-		Long:    errNotImplementedLog.Error(),
-		RunE:    func(cmd *cobra.Command, args []string) error { return errNotImplementedLog },
+		Use:        "stats",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aistats"},
+		Short:      "Statistik pemakaian token (NOT PORTED -- see --help)",
+		Long:       errNotImplementedLog.Error(),
+		RunE:       func(cmd *cobra.Command, args []string) error { return errNotImplementedLog },
 	}
 }
 
 func newDevCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "dev",
-		Aliases: []string{"aidev"},
-		Short:   "Tools development toolkit ini sendiri, workspace tmux (NOT PORTED -- see --help)",
+		Use:        "dev",
+		Deprecated: "gunakan REPL utama ('luna' tanpa argumen) sebagai gantinya.",
+		Aliases:    []string{"aidev"},
+		Short:      "Tools development toolkit ini sendiri, workspace tmux (NOT PORTED -- see --help)",
 		Long: "aidev's logic lives in 60-ui/25-research_dev.zsh and launches a tmux\n" +
 			"workspace -- an interactive-terminal-session concern outside any\n" +
 			"internal/ package's scope (and outside a single CLI subcommand's\n" +
