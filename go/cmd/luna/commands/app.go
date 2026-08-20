@@ -119,10 +119,10 @@ func buildDispatcher() *tools.Dispatcher {
 	register("bash_output", tools.BashOutputTool{})
 	register("kill_shell", tools.KillShellTool{})
 	register("delegate_task", &tools.DelegateTaskTool{})
-	if len(tools.Registry) != 21 {
+	if len(tools.Registry) != 22 {
 		// Guard against a future Registry addition silently missing a
 		// register() call above -- see the comment on this function.
-		panic(fmt.Sprintf("commands: buildDispatcher: tools.Registry has %d entries, only 21 are wired -- add the missing register() call", len(tools.Registry)))
+		panic(fmt.Sprintf("commands: buildDispatcher: tools.Registry has %d entries, only 22 are wired -- add the missing register() call", len(tools.Registry)))
 	}
 	return d
 }

@@ -100,11 +100,19 @@ func PathWithinProject(ctx *AgentContext, cwd, target string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	root, err = canonicalizeExisting(root)
+	if err != nil {
+		return false, err
+	}
 	canonical, err := CanonicalPath(target)
 	if err != nil {
 		return false, err
 	}
-	return canonical == root || strings.HasPrefix(canonical, root+string(filepath.Separator)), nil
+	if strings.EqualFold(canonical, root) {
+		return true, nil
+	}
+	prefix := root + string(filepath.Separator)
+	return len(canonical) >= len(prefix) && strings.EqualFold(canonical[:len(prefix)], prefix), nil
 }
 
 // IsPathAllowed mirrors the AC-01/AC-03 contract carved out of

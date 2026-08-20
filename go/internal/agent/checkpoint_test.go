@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/monang404/luna-go/internal/llmclient"
@@ -158,6 +159,9 @@ func TestCheckpointDirectoryCreatedIfMissing(t *testing.T) {
 }
 
 func TestCheckpointPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows fs permissions behave differently")
+	}
 	dir := t.TempDir()
 	store := NewStore(dir)
 	cp := NewCheckpoint("s", "goal", 0, nil)

@@ -3,6 +3,7 @@ package permission
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -19,6 +20,9 @@ import (
 // and returns the canonicalized root and outside dirs.
 func newTestProject(t *testing.T) (root, outside string) {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows requires admin privileges for symlinks")
+	}
 	base := t.TempDir()
 
 	root = filepath.Join(base, "root")

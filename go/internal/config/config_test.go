@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -144,6 +145,9 @@ func TestModelsFor(t *testing.T) {
 // --- AC-03: secrets loader parses >=1 export line and sets env ---
 
 func TestLoadSecrets_ParsesExportLines(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 600 not supported on Windows")
+	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".secrets.zsh")
 	content := "# comment, should be skipped\n" +
@@ -290,6 +294,9 @@ func TestLoadLimits_EnvOverride(t *testing.T) {
 }
 
 func TestLoadPaths_DerivedFromZshBagas(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("paths on windows use backslashes")
+	}
 	t.Setenv("LUNA", "/tmp/fake-zsh-bagas")
 	os.Unsetenv("AI_AGENT_CHECKPOINT_DIR")
 	os.Unsetenv("AI_TOOL_RUNS_DIR")

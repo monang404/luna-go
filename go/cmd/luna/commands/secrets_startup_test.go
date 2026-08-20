@@ -1,8 +1,10 @@
 package commands
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/monang404/luna-go/internal/config"
@@ -24,6 +26,9 @@ import (
 // calls os.Exit, which isn't testable) against a temp secrets file, the
 // same shape config.LoadSecrets's own tests already use.
 func TestLoadSecretsAtStartup_SetsEnvForEveryCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 600 not supported on Windows")
+	}
 	clearProviderKeys(t)
 
 	dir := t.TempDir()
