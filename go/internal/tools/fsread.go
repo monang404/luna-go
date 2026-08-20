@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -132,26 +135,31 @@ func (ListDirTool) Execute(_ context.Context, args json.RawMessage) (Result, err
 	if fsPath == "" {
 		fsPath = "."
 	}
-	info, err := os.Stat(fsPath)
-	if err != nil || !info.IsDir() {
-		return Result{}, fmt.Errorf("ERROR: direktori gak ketemu (%s)", fsPath)
+	entries, err := os.ReadDir(fsPath)
+	if err != nil {
+		return Result{}, fmt.Errorf("ERROR: gagal membaca direktori (%s): %v", fsPath, err)
 	}
 
-	lsCmd := ""
-	if p, err := exec.LookPath("eza"); err == nil {
-		lsCmd = p
-	} else if p, err := exec.LookPath("ls"); err == nil {
-		lsCmd = p
-	} else if _, err := os.Stat("/bin/ls"); err == nil {
-		lsCmd = "/bin/ls"
-	} else if _, err := os.Stat("/usr/bin/ls"); err == nil {
-		lsCmd = "/usr/bin/ls"
-	} else {
-		return Result{}, fmt.Errorf("ERROR: executable 'ls' atau 'eza' gak ketemu di PATH")
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Directory listing for %s:\n", fsPath))
+	for i, entry := range entries {
+		if i >= 50 {
+			sb.WriteString(fmt.Sprintf("... (and %d more items)\n", len(entries)-50))
+			break
+		}
+		info, err := entry.Info()
+		if err != nil {
+			sb.WriteString(fmt.Sprintf("%s\n", entry.Name()))
+			continue
+		}
+		
+		size := info.Size()
+		modTime := info.ModTime().Format("2006-01-02 15:04")
+		mode := info.Mode().String()
+		sb.WriteString(fmt.Sprintf("%s %10d %s %s\n", mode, size, modTime, entry.Name()))
 	}
 
-	out, _ := exec.Command(lsCmd, "-lah", fsPath).CombinedOutput()
-	return Result{Output: firstNLines(string(out), 50)}, nil
+	return Result{Output: sb.String()}, nil
 }
 
 // CountLinesTool implements _ai_tool_count_lines: total line count,
@@ -225,17 +233,55 @@ func (GrepSearchTool) Execute(_ context.Context, args json.RawMessage) (Result, 
 		return Result{Output: firstNLines(string(out), maxResults)}, nil
 	}
 	if glob != "" {
-		if findBin, err := exec.LookPath("find"); err == nil {
+		if findBin, err := exec.LookPath("find"); err == nil && runtime.GOOS != "windows" {
 			out, _ := exec.Command(findBin, path, "-name", glob, "-type", "f", "-exec", "grep", "-Hn", "-e", pattern, "{}", "+").Output()
 			return Result{Output: firstNLines(string(out), maxResults)}, nil
 		}
 	}
-	grepBin, err := exec.LookPath("grep")
-	if err != nil {
-		return Result{}, fmt.Errorf("ERROR: 'rg'/'grep' gak ketemu di PATH")
+	if grepBin, err := exec.LookPath("grep"); err == nil {
+		out, _ := exec.Command(grepBin, "-rn", "-e", pattern, path).Output()
+		return Result{Output: firstNLines(string(out), maxResults)}, nil
 	}
-	out, _ := exec.Command(grepBin, "-rn", "-e", pattern, path).Output()
-	return Result{Output: firstNLines(string(out), maxResults)}, nil
+	
+	// Native Go fallback for grep -rn
+	var matches []string
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return Result{}, fmt.Errorf("ERROR: pattern regex tidak valid: %v", err)
+	}
+	
+	filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		if glob != "" {
+			match, _ := filepath.Match(glob, info.Name())
+			if !match {
+				return nil
+			}
+		}
+		
+		content, err := os.ReadFile(p)
+		if err != nil {
+			return nil
+		}
+		
+		lines := strings.Split(string(content), "\n")
+		for i, line := range lines {
+			if len(matches) >= maxResults {
+				return filepath.SkipAll
+			}
+			if re.MatchString(line) {
+				matches = append(matches, fmt.Sprintf("%s:%d:%s", p, i+1, line))
+			}
+		}
+		return nil
+	})
+	
+	if len(matches) == 0 {
+		return Result{Output: "(tidak ada file yang cocok)"}, nil
+	}
+	return Result{Output: strings.Join(matches, "\n")}, nil
 }
 
 // GlobSearchTool implements _ai_tool_glob_search's fallback path (fd
@@ -248,7 +294,7 @@ func (GlobSearchTool) Name() string                      { return "glob_search" 
 func (GlobSearchTool) Capability() permission.Capability { return Registry["glob_search"].Capability }
 
 func (GlobSearchTool) Execute(_ context.Context, args json.RawMessage) (Result, error) {
-	pattern := ExtractField(args, "pattern")
+	pattern := strings.ToLower(ExtractField(args, "pattern"))
 	if pattern == "" {
 		return Result{}, fmt.Errorf("ERROR: glob_search membutuhkan args.pattern (string non-empty)")
 	}
@@ -256,8 +302,29 @@ func (GlobSearchTool) Execute(_ context.Context, args json.RawMessage) (Result, 
 		out, _ := exec.Command(fdBin, pattern).Output()
 		return Result{Output: firstNLines(string(out), 100)}, nil
 	}
-	out, _ := exec.Command("find", ".", "-name", "*"+pattern+"*").Output()
-	return Result{Output: firstNLines(string(out), 100)}, nil
+
+	// Native Go fallback for find . -name "*pattern*"
+	var matches []string
+	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if len(matches) >= 100 {
+			return filepath.SkipAll
+		}
+		if strings.Contains(strings.ToLower(info.Name()), pattern) {
+			matches = append(matches, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return Result{}, fmt.Errorf("ERROR: pencarian gagal: %v", err)
+	}
+	
+	if len(matches) == 0 {
+		return Result{Output: "(tidak ada file yang cocok)"}, nil
+	}
+	return Result{Output: strings.Join(matches, "\n")}, nil
 }
 
 // --- shared helpers ---

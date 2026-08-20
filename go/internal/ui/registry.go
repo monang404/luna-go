@@ -61,6 +61,7 @@ var CommandRegistry = []CommandEntry{
 	{"research", "Agent", "Riset/inspeksi codebase standalone, read-only"},
 	{"delegate", "Agent", "Standalone coder subagent; permission existing dapat menulis file"},
 	// --- Utility ---
+	{"auth", "Utility", "Kelola otentikasi provider (login, logout) tanpa set env manual"},
 	{"stats", "Utility", "Statistik pemakaian token"},
 	{"log", "Utility", "History chat/perintah lewat fzf (nama kanonik: aihist)"},
 	{"menu", "Utility", "Buka LUNA Workspace (sama seperti luna tanpa argumen)"},

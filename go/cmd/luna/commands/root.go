@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"github.com/monang404/luna-go/internal/repl"
 	"github.com/monang404/luna-go/internal/settings"
 	"github.com/monang404/luna-go/internal/ui"
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +29,7 @@ var noAPIKeyCommands = map[string]bool{
 	"undo": true, "bakclean": true, "share": true, "view": true,
 	"deps": true, "h": true, "menu": true, "help": true, "completion": true,
 	"scan": true, "index": true, "log": true, "stats": true, "dev": true,
+	"auth": true,
 }
 
 // NewRootCmd builds the full cobra command tree: one subcommand per
@@ -137,6 +140,7 @@ func NewRootCmd(app *App) *cobra.Command {
 	root.AddCommand(newResearchCmd(app))
 	root.AddCommand(newDelegateCmd(app))
 	// --- Utility ---
+	root.AddCommand(newAuthCmd(app))
 	root.AddCommand(newStatsCmd())
 	root.AddCommand(newLogCmd())
 	root.AddCommand(newMenuCmd())
@@ -161,16 +165,71 @@ func NewRootCmd(app *App) *cobra.Command {
 func startupSelfCheck(cmd *cobra.Command) error {
 	name := cmd.Name()
 	llmclient.Debugf("startup_self_check command=%s order=%v", name, config.TaskProviderOrder)
-	if name == "luna" || noAPIKeyCommands[name] {
-		return nil
-	}
 	if config.HasAnyKey(config.TaskProviderOrder) {
 		return nil
 	}
+
+	if name == "luna" {
+		fmt.Println()
+		pterm.DefaultHeader.WithFullWidth().WithMargin(1).Println("LUNA - Setup API Key Pertama Kali")
+		pterm.Println("Sepertinya Anda belum mengatur API Key.")
+		pterm.Info.Print("Masukkan API Key Anda (mis. sk-or-..., sk-...): ")
+		
+		reader := bufio.NewReader(os.Stdin)
+		key, _ := reader.ReadString('\n')
+		key = strings.TrimSpace(key)
+		
+		if key != "" {
+			var envVar string
+			if strings.HasPrefix(key, "sk-or-") {
+				envVar = "OPENROUTER_API_KEY"
+			} else if strings.HasPrefix(key, "sk-ant-") {
+				envVar = "ANTHROPIC_API_KEY"
+			} else if strings.HasPrefix(key, "gsk_") {
+				envVar = "GROQ_API_KEY"
+			} else {
+				// Assume deepseek if generic sk- or ask? We'll just default to DEEPSEEK_API_KEY for now 
+				// as a fallback since they asked for it, or we could ask interactively. 
+				// Let's just ask interactively!
+				fmt.Print("Provider apa ini? (deepseek/openai/gemini/openrouter): ")
+				prov, _ := reader.ReadString('\n')
+				prov = strings.ToLower(strings.TrimSpace(prov))
+				if prov == "" { prov = "deepseek" } // default
+				if prov == "gemini" || prov == "google" {
+					envVar = "GEMINI_API_KEY"
+				} else {
+					envVar = strings.ToUpper(prov) + "_API_KEY"
+				}
+			}
+			
+			// Save token
+			secretsPath := config.DefaultSecretsPath()
+			b, _ := os.ReadFile(secretsPath)
+			content := string(b) + fmt.Sprintf("\nexport %s=\"%s\"\n", envVar, key)
+			os.MkdirAll(filepath.Dir(secretsPath), 0700)
+			os.WriteFile(secretsPath, []byte(content), 0600)
+			
+			// Set it in current env so they can chat immediately
+			os.Setenv(envVar, key)
+			fmt.Println()
+			pterm.Success.Printfln("API Key %s telah disimpan.", envVar)
+			fmt.Println()
+			return nil
+		}
+		
+		fmt.Println()
+		pterm.Warning.Println("API Key kosong. Melanjutkan ke REPL, tapi obrolan mungkin gagal.")
+		return nil
+	}
+
+	if noAPIKeyCommands[name] {
+		return nil
+	}
+
 	return fmt.Errorf(
-		"luna: no LUNA provider API key is set (checked %v). "+
-			"Set at least one provider's key env var (see `luna deps`) before running `%s`",
-		config.TaskProviderOrder, name)
+		"luna: tidak ada API key yang dikonfigurasi (checked %v).\n"+
+			"Jalankan `luna auth set <provider> <api_key>` untuk mengaturnya (contoh: `luna auth set openrouter sk-or-v1-...`)",
+		config.TaskProviderOrder)
 }
 
 // assertRegistryParity is AC-01's compile-adjacent guard: every command

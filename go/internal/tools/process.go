@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -406,22 +407,25 @@ func (RunCommandTool) Execute(ctx context.Context, args json.RawMessage) (Result
 	}
 
 	background := boolField(mustObject(args), "background")
-
-	if background {
-		cmd := exec.Command("zsh", "-f", "-c", "--", command)
-		if _, err := exec.LookPath("zsh"); err != nil {
-			cmd = exec.Command("sh", "-c", command)
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		if background {
+			cmd = exec.Command("cmd", "/c", command)
+			return startBackgroundProcess(cmd, "shell")
 		}
-		return startBackgroundProcess(cmd, "shell")
-	}
-
-	cmd := exec.CommandContext(ctx, "zsh", "-f", "-c", "--", command)
-	if _, err := exec.LookPath("zsh"); err != nil {
-		// zsh not installed on this host -- /bin/sh -c is the portable
-		// fallback for the legacy shell tool (still shell-interpreted by
-		// design, see this type's own doc comment; only the specific
-		// interpreter binary differs from the zsh source's own `zsh -f -c`).
-		cmd = exec.CommandContext(ctx, "sh", "-c", command)
+		cmd = exec.CommandContext(ctx, "cmd", "/c", command)
+	} else {
+		if background {
+			cmd = exec.Command("zsh", "-f", "-c", "--", command)
+			if _, err := exec.LookPath("zsh"); err != nil {
+				cmd = exec.Command("sh", "-c", command)
+			}
+			return startBackgroundProcess(cmd, "shell")
+		}
+		cmd = exec.CommandContext(ctx, "zsh", "-f", "-c", "--", command)
+		if _, err := exec.LookPath("zsh"); err != nil {
+			cmd = exec.CommandContext(ctx, "sh", "-c", command)
+		}
 	}
 
 	out, err := cmd.CombinedOutput()

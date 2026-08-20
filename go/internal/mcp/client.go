@@ -1,22 +1,16 @@
 package mcp
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"os/exec"
 	"sync"
 	"sync/atomic"
 )
 
-// Client manages communication with a single MCP server over stdio.
+// Client manages communication with a single MCP server over a Transport.
 type Client struct {
-	cmd       *exec.Cmd
-	stdin     io.WriteCloser
-	stdout    io.ReadCloser
-	stderr    io.ReadCloser
+	transport Transport
 	nextReqID int64
 
 	mu       sync.Mutex
@@ -25,59 +19,36 @@ type Client struct {
 	err      error
 }
 
-// NewClient starts an MCP server process and returns a connected Client.
-func NewClient(ctx context.Context, command string, args []string, env []string) (*Client, error) {
-	cmd := exec.CommandContext(ctx, command, args...)
-	if len(env) > 0 {
-		cmd.Env = append(cmd.Environ(), env...)
-	}
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-
+// NewClient creates a new Client from a Transport.
+func NewClient(transport Transport) *Client {
 	c := &Client{
-		cmd:      cmd,
-		stdin:    stdin,
-		stdout:   stdout,
-		stderr:   stderr,
-		pending:  make(map[int64]chan *JSONRPCMessage),
-		loopDone: make(chan struct{}),
+		transport: transport,
+		pending:   make(map[int64]chan *JSONRPCMessage),
+		loopDone:  make(chan struct{}),
 	}
-
 	go c.readLoop()
-
-	return c, nil
+	return c
 }
 
 // Close gracefully (or forcefully) stops the client.
 func (c *Client) Close() {
-	c.stdin.Close()
-	c.cmd.Process.Kill()
+	c.transport.Close()
 	<-c.loopDone
 }
 
 func (c *Client) readLoop() {
 	defer close(c.loopDone)
-	scanner := bufio.NewScanner(c.stdout)
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		var msg JSONRPCMessage
-		if err := json.Unmarshal(line, &msg); err != nil {
-			continue // skip malformed lines (could be raw logs)
+	for {
+		msg, err := c.transport.Receive(context.Background())
+		if err != nil {
+			c.mu.Lock()
+			c.err = fmt.Errorf("client disconnected: %v", err)
+			for _, ch := range c.pending {
+				close(ch)
+			}
+			c.pending = make(map[int64]chan *JSONRPCMessage)
+			c.mu.Unlock()
+			return
 		}
 
 		if msg.ID != nil {
@@ -89,17 +60,10 @@ func (c *Client) readLoop() {
 			c.mu.Unlock()
 
 			if ok {
-				ch <- &msg
+				ch <- msg
 			}
 		}
 	}
-	c.mu.Lock()
-	c.err = fmt.Errorf("client disconnected")
-	for _, ch := range c.pending {
-		close(ch)
-	}
-	c.pending = make(map[int64]chan *JSONRPCMessage)
-	c.mu.Unlock()
 }
 
 // sendRequest sends a JSON-RPC request and waits for the response.
@@ -121,10 +85,8 @@ func (c *Client) sendRequest(method string, params interface{}) (*JSONRPCMessage
 		Method:  method,
 		Params:  paramsRaw,
 	}
-	reqBytes, _ := json.Marshal(req)
-	reqBytes = append(reqBytes, '\n')
 
-	if _, err := c.stdin.Write(reqBytes); err != nil {
+	if err := c.transport.Send(context.Background(), &req); err != nil {
 		c.mu.Lock()
 		delete(c.pending, reqID)
 		c.mu.Unlock()
@@ -159,9 +121,7 @@ func (c *Client) Initialize() error {
 		JSONRPC: "2.0",
 		Method:  "notifications/initialized",
 	}
-	nb, _ := json.Marshal(notification)
-	nb = append(nb, '\n')
-	c.stdin.Write(nb)
+	c.transport.Send(context.Background(), &notification)
 
 	var res InitializeResult
 	return json.Unmarshal(resp.Result, &res)

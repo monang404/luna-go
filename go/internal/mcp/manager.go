@@ -41,11 +41,24 @@ func (m *Manager) StartAndDiscover(ctx context.Context, cfg *config.MCPConfig) e
 			continue // Already running
 		}
 
-		client, err := NewClient(ctx, srvCfg.Command, srvCfg.Args, srvCfg.Env)
+		var transport Transport
+		var err error
+
+		if srvCfg.URL != "" {
+			transport, err = NewHTTPTransport(ctx, srvCfg.URL, srvCfg.Headers)
+		} else if srvCfg.Command != "" {
+			transport, err = NewStdioTransport(ctx, srvCfg.Command, srvCfg.Args, srvCfg.Env)
+		} else {
+			log.Printf("[MCP] Server %q has neither command nor url configured", name)
+			continue
+		}
+
 		if err != nil {
 			log.Printf("[MCP] Failed to start server %q: %v", name, err)
 			continue
 		}
+
+		client := NewClient(transport)
 
 		if err := client.Initialize(); err != nil {
 			log.Printf("[MCP] Failed to initialize server %q: %v", name, err)

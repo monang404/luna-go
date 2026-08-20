@@ -94,7 +94,8 @@ func ParsePlan(reply string) Plan {
 		_, hasCommand := obj["command"]
 		_, hasThought := obj["thought"]
 		_, hasDone := obj["done"]
-		if !hasTool && !hasCommand && !hasThought && !hasDone {
+		_, hasResponse := obj["response"]
+		if !hasTool && !hasCommand && !hasThought && !hasDone && !hasResponse {
 			continue
 		}
 		return planFromObject(obj)
@@ -107,6 +108,9 @@ func ParsePlan(reply string) Plan {
 // `done = bool(...)`.
 func planFromObject(obj map[string]any) Plan {
 	p := Plan{Thought: truthyString(obj["thought"])}
+	if resp := truthyString(obj["response"]); resp != "" {
+		p.Thought = resp
+	}
 
 	if _, hasTool := obj["tool"]; !hasTool {
 		if cmdVal, hasCommand := obj["command"]; hasCommand {

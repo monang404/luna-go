@@ -260,7 +260,7 @@ func TestLoadLimits_Defaults(t *testing.T) {
 		"DailyTokenWarn":          150000,
 		"NotifyMinIntervalSec":    3,
 		"CircuitBreakerWindowSec": 30,
-		"AgentMaxSteps":           15,
+		"AgentMaxSteps":           50,
 		"AgentMaxSameFail":        3,
 	}
 	for k, v := range want {

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Definition represents a dynamically loaded subagent from .luna/agents/*.md
@@ -92,19 +94,16 @@ func parseDefinition(role Role, content string) *Definition {
 		return def
 	}
 
-	for _, line := range lines[1:closeIdx] {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "description:") {
-			def.Description = strings.TrimSpace(strings.TrimPrefix(line, "description:"))
-		} else if strings.HasPrefix(line, "tools:") {
-			toolsStr := strings.TrimSpace(strings.TrimPrefix(line, "tools:"))
-			toolsStr = strings.Trim(toolsStr, "[]")
-			for _, t := range strings.Split(toolsStr, ",") {
-				if t = strings.TrimSpace(t); t != "" {
-					def.Tools = append(def.Tools, t)
-				}
-			}
-		}
+	frontmatter := strings.Join(lines[1:closeIdx], "\n")
+	
+	type Frontmatter struct {
+		Description string   `yaml:"description"`
+		Tools       []string `yaml:"tools"`
+	}
+	var fm Frontmatter
+	if err := yaml.Unmarshal([]byte(frontmatter), &fm); err == nil {
+		def.Description = fm.Description
+		def.Tools = fm.Tools
 	}
 
 	if closeIdx+1 < len(lines) {

@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/chzyer/readline"
+	"github.com/pterm/pterm"
 
 	"github.com/monang404/luna-go/internal/agent"
 	"github.com/monang404/luna-go/internal/config"
@@ -104,13 +105,14 @@ type REPL struct {
 	permConfig permission.PermConfig
 	tracker    *permission.ApprovalTracker
 
-	// Session state
+	// runtime state
 	sessionID      string
 	totalTokensIn  int
 	totalTokensOut int
 	turnCount      int
 	slashReg       *slashcmd.Registry
 	exitRequested  bool
+	spinner        *pterm.SpinnerPrinter
 }
 
 // New creates a REPL with the given options.
@@ -322,7 +324,8 @@ func (r *REPL) interactiveLoop(ctx context.Context) error {
 	go func() {
 		for range sigCh {
 			if time.Since(lastInterrupt) < 2*time.Second {
-				fmt.Fprintln(os.Stderr, "\n[luna] Keluar (interrupt ganda)")
+				fmt.Println()
+				pterm.Warning.Println("Keluar (interrupt ganda)")
 				os.Exit(130)
 			}
 			lastInterrupt = time.Now()
@@ -365,9 +368,9 @@ func (r *REPL) interactiveLoop(ctx context.Context) error {
 		if rl != nil {
 			line, err := rl.Readline()
 			if err == readline.ErrInterrupt {
-				if len(line) == 0 {
-					// Pressing Ctrl+C on empty line
-					continue
+				select {
+				case sigCh <- os.Interrupt:
+				default:
 				}
 				continue
 			} else if err == io.EOF {
@@ -591,6 +594,12 @@ func (r *REPL) runTurn(ctx context.Context, userMsg string) error {
 	}
 
 	result, err := agent.RunLoop(ctx, deps, userMsg, cp)
+	
+	if r.spinner != nil {
+		r.spinner.Stop()
+		r.spinner = nil
+	}
+
 	if err != nil {
 		return err
 	}
@@ -645,12 +654,34 @@ func (r *REPL) terminalAsk(prompt string) (bool, error) {
 	}
 }
 
-// logAgent prints agent progress to stderr.
+// logAgent prints agent progress to stderr using animated spinners.
 func (r *REPL) logAgent(msg string) {
 	if r.opts.OutputFormat == "json" {
 		return
 	}
-	fmt.Fprintf(r.err, "  %s\n", msg)
+	
+	msg = strings.TrimSpace(msg)
+	
+	// Create spinner if it doesn't exist yet for this turn
+	if r.spinner == nil {
+		r.spinner, _ = pterm.DefaultSpinner.WithRemoveWhenDone(true).Start()
+	}
+
+	// Update text depending on step
+	if strings.HasPrefix(msg, "[berpikir]") {
+		r.spinner.UpdateText("Sedang berpikir...")
+	} else if strings.HasPrefix(msg, "step ") {
+		r.spinner.UpdateText(msg)
+	} else if strings.HasPrefix(msg, "v ") || strings.HasPrefix(msg, "✓ ") || strings.HasPrefix(msg, "x ") || strings.HasPrefix(msg, "✗ ") {
+		// Just update the text to show success/fail briefly before next thinking phase
+		r.spinner.UpdateText(msg)
+	} else if strings.HasPrefix(msg, "[") {
+		// Stop spinner entirely to print the warning, then leave it nil
+		r.spinner.Warning(msg)
+		r.spinner = nil
+	} else {
+		r.spinner.UpdateText(msg)
+	}
 }
 
 // buildSystemPrompt assembles the system prompt from components.
@@ -661,7 +692,21 @@ func (r *REPL) buildSystemPrompt(memoryContent string) string {
 		"Kamu punya akses ke berbagai tool untuk membaca, menulis, dan mengedit file, "+
 		"menjalankan command, mencari file/isi file, dan lainnya. "+
 		"Pilih tool yang tepat untuk menyelesaikan permintaan user. "+
-		"Selalu gunakan tool untuk memverifikasi pekerjaan kamu sebelum menyatakan selesai.")
+		"Selalu gunakan tool untuk memverifikasi pekerjaan kamu sebelum menyatakan selesai.\n\n"+
+		"PENTING: Kamu WAJIB selalu merespons dengan struktur JSON object murni. "+
+		"Jangan tambahkan teks pengantar apapun di luar JSON block.\n"+
+		"Gunakan format ini untuk memanggil tool:\n"+
+		"{\n"+
+		"  \"thought\": \"<pemikiran kamu, langkah logis>\",\n"+
+		"  \"tool\": \"<nama tool>\",\n"+
+		"  \"args\": {\"<kunci>\": \"<nilai>\"}\n"+
+		"}\n\n"+
+		"Jika tugas sudah selesai, kamu WAJIB memberikan jawaban akhirmu ke user di dalam field `response`:\n"+
+		"{\n"+
+		"  \"thought\": \"<pemikiran kamu>\",\n"+
+		"  \"response\": \"<jawaban lengkap, ringkasan, atau penjelasan akhir untuk user>\",\n"+
+		"  \"done\": true\n"+
+		"}")
 
 	// Add memory content
 	if memoryContent != "" {
@@ -684,11 +729,7 @@ func (r *REPL) buildSystemPrompt(memoryContent string) string {
 // printHeader displays the REPL startup banner.
 func (r *REPL) printHeader(mode settings.PermissionMode) {
 	fmt.Fprintln(r.out, "")
-	fmt.Fprintln(r.out, "╭─────────────────────────────────────╮")
-	fmt.Fprintln(r.out, "│          🌙 LUNA (Go)               │")
-	fmt.Fprintln(r.out, "│   Agentic AI Dev Assistant          │")
-	fmt.Fprintln(r.out, "╰─────────────────────────────────────╯")
-	fmt.Fprintln(r.out, "")
+	pterm.DefaultHeader.WithFullWidth().WithMargin(1).Println("LUNA (Go) - Agentic AI Dev Assistant")
 
 	model := r.opts.Model
 	if model == "" && r.settings != nil {
@@ -697,14 +738,16 @@ func (r *REPL) printHeader(mode settings.PermissionMode) {
 	if model == "" {
 		model = "(auto)"
 	}
-	fmt.Fprintf(r.out, "  Model: %s | Mode: %s\n", model, mode)
+	
+	pterm.Info.Printfln("Model: %s | Mode: %s", model, mode)
 
 	if r.opts.ProjectRoot != "" {
-		fmt.Fprintf(r.out, "  Project: %s\n", r.opts.ProjectRoot)
+		pterm.Info.Printfln("Project: %s", r.opts.ProjectRoot)
 	}
 
 	fmt.Fprintln(r.out, "")
-	fmt.Fprintln(r.out, "  Ketik pesan untuk mulai. /help untuk bantuan, /exit untuk keluar.")
+	pterm.ThemeDefault.SuccessMessageStyle.Println("Ketik pesan untuk mulai. /help untuk bantuan, /exit untuk keluar.")
+	fmt.Fprintln(r.out, "")
 }
 
 // printPermissions shows active permission configuration.

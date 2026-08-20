@@ -205,7 +205,7 @@ func RunLoop(ctx context.Context, deps Deps, goal string, resume *Checkpoint) (F
 
 	maxSteps := deps.Limits.AgentMaxSteps
 	if maxSteps <= 0 {
-		maxSteps = 15
+		maxSteps = 50
 	}
 
 	for rs.state.Step < maxSteps {
@@ -363,6 +363,7 @@ func (rs *runState) getPlan(ctx context.Context) (brk bool, err error) {
 	rs.state.Step++
 	llmclient.Debugf("agent step=%d phase=%s", rs.state.Step, rs.state.Phase)
 
+	rs.log("[berpikir] step %d", rs.state.Step)
 	resp, reqErr := rs.requestCompletion(ctx)
 	if errors.Is(reqErr, llmclient.ErrCancelled) {
 		rs.blockReason = fmt.Sprintf("Agent dibatalkan (step %d)", rs.state.Step)
@@ -494,16 +495,10 @@ func (rs *runState) rejectDoneChecks() (reject bool, err error) {
 		}
 	}
 
-	if rs.done && rs.commandsRun == 0 {
-		rs.log("  [ditolak: agent klaim selesai tapi belum pernah memanggil tool apa pun di sesi ini]")
-		rs.messages = append(rs.messages,
-			llmclient.Message{Role: "assistant", Content: rs.lastReply},
-			llmclient.Message{Role: "user", Content: "Kamu klaim goal ini sudah selesai, tapi belum memanggil satu tool pun di sesi ini. Klaim tanpa verifikasi TIDAK DITERIMA. Jalankan tool nyata yang membuktikan goal ini tercapai (baca file terkait, jalankan test, dsb) sebelum declare done:true lagi."},
-		)
-		rs.saveCheckpoint()
-		rs.done = false
-		return true, nil
-	}
+	// We intentionally remove the commandsRun == 0 rejection check here
+	// because it prevents the agent from simply chatting or answering questions
+	// without artificially running a tool first.
+	// (Previously, it would append a corrective user-turn "Kamu klaim goal ini sudah selesai, tapi belum memanggil satu tool pun...").
 
 	// NOTE: no syntax-verify-before-done gate here -- see package doc
 	// comment for why (no Go port of the checker dispatcher exists).

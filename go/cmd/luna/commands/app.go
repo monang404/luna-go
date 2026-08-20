@@ -58,6 +58,9 @@ type App struct {
 // termux-clipboard-*-backed Clipboard that degrades to
 // aiops.NoClipboard off-Termux. Exactly one App exists per process.
 func NewApp() *App {
+	// Auto-load secrets (API keys) from ~/.secrets.zsh into the environment
+	config.LoadSecrets(config.DefaultSecretsPath())
+
 	requester := aiops.NewRequester()
 	runner := aiops.ExecRunner{}
 	dispatcher := buildDispatcher()

@@ -66,6 +66,10 @@ func BuildPayload(messages []Message, opts PayloadOptions) ([]byte, error) {
 		"max_tokens":  opts.MaxTokens,
 		"temperature": opts.Temperature,
 	}
+	
+	// Enforce JSON format for models that support it
+	body["response_format"] = map[string]string{"type": "json_object"}
+
 	if opts.ReasoningEffort != "" {
 		body["reasoning_effort"] = opts.ReasoningEffort
 	}
