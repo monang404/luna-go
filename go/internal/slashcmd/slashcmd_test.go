@@ -44,7 +44,7 @@ func (m *mockState) InjectPrompt(ctx context.Context, p string) {
 
 func TestRegistry_Dispatch(t *testing.T) {
 	r := NewRegistry()
-	RegisterBuiltins(r)
+	RegisterBuiltins(r, nil)
 
 	t.Run("not a slash command", func(t *testing.T) {
 		m := &mockState{}

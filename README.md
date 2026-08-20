@@ -1,45 +1,59 @@
 # Luna-Go 🚀
 
-Luna-Go adalah AI Assistant berbasis terminal (CLI) mutakhir yang dirancang sebagai pengganti toolkit agentic lawas (berbasis bash/zsh). Dibangun menggunakan Go, Luna dirancang untuk menghadirkan pengalaman AI-assisted programming yang setara dengan Claude Code CLI.
+Luna-Go adalah **multi-provider agentic CLI dengan permission/path-traversal model paling ketat di kelasnya, tanpa lock-in ke satu vendor LLM.** 
 
-## Fitur Utama
+Dirancang sebagai pesaing langsung Claude Code dan Gemini CLI, Luna-Go memadukan keamanan sandbox dengan fleksibilitas untuk berganti provider AI on-the-fly, memastikan Anda memegang kendali penuh atas file mana yang bisa disentuh oleh agen AI.
 
-- **Zero-Config Agentic REPL**: Siklus interaksi LLM lengkap secara lokal dengan integrasi _tools_ otomatis (Filesystem, Shell Execute, Git, dll).
-- **Multi-Provider LLM**: Mendukung Anthropic, OpenRouter, Groq, Gemini, dan Cerebras secara dinamis.
-- **Robust Permission System**: Eksekusi command dan akses file yang kritis secara otomatis dibekukan dan dilindungi oleh *permission gate* untuk persetujuan pengguna.
-- **Subagent & Delegation**: Dapat melahirkan (spawn) sub-agent otonom (mis. role Researcher atau Coder) yang membaca dari definisi YAML.
-- **Web Search Natively**: Terintegrasi penuh dengan *DuckDuckGo Lite Scraper* untuk melakukan pencarian *web* tanpa kunci API eksternal (zero-config).
-- **Session Resume & Memory**: Menyimpan memori *chat* dan status sesi agar dapat di-_resume_ kapan saja. Dilengkapi command `/rewind` untuk manajemen memori.
+![Luna-Go Demo](docs/placeholder_demo.gif)
 
-## Cara Instalasi & Penggunaan
+## Kenapa Luna-Go?
+- **Multi-Provider LLM**: Mendukung Anthropic, OpenRouter, Groq, Gemini, dan Cerebras.
+- **Robust Permission System**: Setiap *tool* (filesystem, eksekusi shell) wajib melalui _permission gate_. Tidak ada `rm -rf /` di luar batas project Anda tanpa approval.
+- **Subagent & Delegation**: Dapat membuat sub-agent otonom sesuai role yang didefinisikan.
+- **Session Resume & Memory**: Bisa *rewind* sesi dan _resume_ kapanpun.
+- **Zero-config Web Search**: Terintegrasi *DuckDuckGo Lite Scraper* secara native.
 
-Pastikan Anda telah menginstal [Go](https://golang.org/dl/) versi terbaru.
+## Instalasi
+
+Gunakan script instalasi ini (MacOS/Linux):
 
 ```bash
-# 1. Clone repository ini
-git clone https://github.com/monang404/luna-go.git
-cd luna-go/go
-
-# 2. Unduh dependencies (vendored)
-go mod tidy
-go mod vendor
-
-# 3. Jalankan Luna CLI
-go run ./cmd/luna
+curl -fsSL https://raw.githubusercontent.com/monang404/luna-go/main/install.sh | sh
 ```
 
-### Slash Commands Utama
-Di dalam interaktif REPL, ketikkan perintah berikut:
-- `/clear`: Menghapus context chat saat ini.
-- `/compact`: Merangkum isi percakapan untuk menghemat _token limit_.
-- `/cost`: Menampilkan ringkasan tagihan token API saat ini.
-- `/rewind`: Memutar ulang dan menghapus *N* percakapan ke belakang.
-- `/resume <id>`: Melanjutkan sesi agen lama yang sebelumnya terputus.
+Atau unduh langsung file biner untuk Windows dari halaman **[Releases](https://github.com/monang404/luna-go/releases)**.
 
-## Struktur Project
-- `go/cmd/luna/`: Entrypoint dan konfigurasi framework *Cobra CLI*.
-- `go/internal/repl/`: Core mesin iterasi LLM (REPL).
-- `go/internal/tools/`: Implementasi fungsionalitas tool lokal (fs, network, shell).
-- `go/internal/llmclient/`: Adapter untuk semua provider LLM (Groq, Gemini, Anthropic, dll).
-- `go/internal/permission/`: Mesin *gatekeeper* untuk keamanan eksekusi AI.
-- `go/internal/subagent/`: Mesin pendelegasian multi-agen.
+## Quickstart
+
+Setelah diinstal, atur API Key untuk provider yang ingin Anda gunakan (mis. Anthropic):
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+Lalu, jalankan Luna:
+
+```bash
+luna "Buatkan saya fungsi Golang untuk menghitung deret Fibonacci, lalu buat unit testnya."
+```
+
+## Konfigurasi
+
+Semua konfigurasi bisa diatur dari file `.luna/settings.json` di *root* project atau `~/.luna/config.yaml` untuk level *global*. Luna juga dapat membaca *system prompt* kustom dari file `LUNA.md`.
+
+Informasi selengkapnya mengenai konfigurasi dapat Anda baca di dokumentasi terpisah di direktori `docs/user/` (segera hadir).
+
+## Security & Privacy
+
+**Tidak Ada Telemetri**: 
+Luna-Go **tidak mengumpulkan atau mengirimkan data telemetry apapun** ke server kami atau pihak ketiga selain data yang dikirimkan ke provider LLM yang Anda pilih. 
+
+Pahami kebijakan privasi dari provider LLM Anda masing-masing (mis. Anthropic atau Google). 
+
+Silakan merujuk ke **[SECURITY.md](SECURITY.md)** untuk kebijakan pelaporan *vulnerability* dan model keamanannya.
+
+## Kontribusi
+Laporan *bug* atau *feature requests* sangat diterima. Harap jangan ragu membuka Issue!
+
+## Lisensi
+Aplikasi ini dirilis dengan **[MIT License](LICENSE)**.

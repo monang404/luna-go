@@ -257,7 +257,7 @@ func TestToolAllowed(t *testing.T) {
 		{Role("bogus"), "read_file", false},
 	}
 	for _, c := range cases {
-		if got := ToolAllowed(c.role, c.tool); got != c.want {
+		if got := ToolAllowed(nil, c.role, c.tool); got != c.want {
 			t.Errorf("ToolAllowed(%q, %q) = %v, want %v", c.role, c.tool, got, c.want)
 		}
 	}

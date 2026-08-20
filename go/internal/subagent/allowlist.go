@@ -34,12 +34,12 @@ const (
 
 // IsValidRole reports whether role is one of the two roles this round
 // of the subagent system supports, OR a dynamically loaded role.
-func IsValidRole(role Role) bool {
+func IsValidRole(loader *Loader, role Role) bool {
 	switch role {
 	case RoleResearcher, RoleCoder:
 		return true
 	default:
-		if GetDefinition(role) != nil {
+		if loader != nil && loader.GetDefinition(role) != nil {
 			return true
 		}
 		return false
@@ -69,14 +69,17 @@ var coderTools = []string{
 // for any role IsValidRole rejects. The returned slice is owned by this
 // package -- callers (run.go's Dispatcher.Subset call) must not mutate
 // it.
-func AllowedTools(role Role) []string {
+func AllowedTools(loader *Loader, role Role) []string {
 	switch role {
 	case RoleResearcher:
 		return researcherTools
 	case RoleCoder:
 		return coderTools
 	default:
-		def := GetDefinition(role)
+		if loader == nil {
+			return nil
+		}
+		def := loader.GetDefinition(role)
 		if def != nil && len(def.Tools) > 0 {
 			return def.Tools
 		}
@@ -91,8 +94,8 @@ func AllowedTools(role Role) []string {
 // ToolAllowed mirrors _ai_subagent_tool_allowed(role, tool) directly, for
 // callers (and tests) that want a yes/no answer without going through
 // Dispatcher.Subset.
-func ToolAllowed(role Role, tool string) bool {
-	for _, t := range AllowedTools(role) {
+func ToolAllowed(loader *Loader, role Role, tool string) bool {
+	for _, t := range AllowedTools(loader, role) {
 		if t == tool {
 			return true
 		}

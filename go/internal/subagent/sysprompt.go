@@ -14,7 +14,7 @@ import "fmt"
 // deployments, or tests). Returns "" for any role IsValidRole rejects --
 // callers must reject an invalid role before reaching here (SpawnSubagent
 // does).
-func BuildSysprompt(role Role, subGoal, termuxContext string) string {
+func BuildSysprompt(loader *Loader, role Role, subGoal, termuxContext string) string {
 	switch role {
 	case RoleResearcher:
 		return fmt.Sprintf(`You are a readonly research subagent.
@@ -56,7 +56,10 @@ that becomes the summary returned to the caller, so make it self-contained and r
 		}
 		return prompt
 	default:
-		def := GetDefinition(role)
+		if loader == nil {
+			return ""
+		}
+		def := loader.GetDefinition(role)
 		if def != nil {
 			prompt := fmt.Sprintf(`You are a subagent with role: %s.
 

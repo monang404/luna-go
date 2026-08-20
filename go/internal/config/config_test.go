@@ -89,28 +89,34 @@ func TestProviderOrder_ExcludesDeepseek(t *testing.T) {
 
 // --- AC-02: default models match 35-providers.zsh exactly ---
 
-func TestProviders_DefaultModels(t *testing.T) {
+func TestProviders_DefaultModelsAndEndpoints(t *testing.T) {
 	clearProviderKeys(t)
 	os.Unsetenv("GEMINI_MODEL")
 	os.Unsetenv("CEREBRAS_MODEL")
 	os.Unsetenv("DEEPSEEK_MODEL")
 
-	want := map[string]string{
-		"groq":     "openai/gpt-oss-120b",
-		"gemini":   "gemini-flash-latest",
-		"cerebras": "gpt-oss-120b",
-		"deepseek": "deepseek-v4-flash",
+	want := map[string]struct {
+		Endpoint string
+		Model    string
+	}{
+		"groq":     {Endpoint: "https://api.groq.com/openai/v1/chat/completions", Model: "openai/gpt-oss-120b"},
+		"gemini":   {Endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", Model: "gemini-flash-latest"},
+		"cerebras": {Endpoint: "https://api.cerebras.ai/v1/chat/completions", Model: "gpt-oss-120b"},
+		"deepseek": {Endpoint: "https://api.deepseek.com/chat/completions", Model: "deepseek-v4-flash"},
 	}
 
 	providers := Providers()
-	for name, wantModel := range want {
+	for name, wantData := range want {
 		p, ok := providers[name]
 		if !ok {
 			t.Errorf("Providers() missing %q", name)
 			continue
 		}
-		if p.Model != wantModel {
-			t.Errorf("Providers()[%q].Model = %q, want %q", name, p.Model, wantModel)
+		if p.Model != wantData.Model {
+			t.Errorf("Providers()[%q].Model = %q, want %q", name, p.Model, wantData.Model)
+		}
+		if p.Endpoint != wantData.Endpoint {
+			t.Errorf("Providers()[%q].Endpoint = %q, want %q", name, p.Endpoint, wantData.Endpoint)
 		}
 	}
 }

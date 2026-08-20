@@ -89,7 +89,7 @@ func (r *Registry) Commands() []SlashCommand {
 
 // -- Built-in commands --
 
-func RegisterBuiltins(r *Registry) {
+func RegisterBuiltins(r *Registry, loader *subagent.Loader) {
 	r.Register(cmdExit{})
 	r.Register(cmdClear{})
 	r.Register(&cmdHelp{registry: r})
@@ -101,7 +101,7 @@ func RegisterBuiltins(r *Registry) {
 	r.Register(cmdInit{})
 	r.Register(cmdResume{})
 	r.Register(cmdRewind{})
-	r.Register(cmdAgents{})
+	r.Register(cmdAgents{loader: loader})
 	r.Register(cmdStatus{})
 }
 
@@ -247,13 +247,18 @@ func (cmdRewind) Execute(_ context.Context, args []string, state State) error {
 	return nil
 }
 
-type cmdAgents struct{}
+type cmdAgents struct{
+	loader *subagent.Loader
+}
 
 func (cmdAgents) Name() string        { return "/agents" }
 func (cmdAgents) Aliases() []string   { return nil }
 func (cmdAgents) Description() string { return "Lihat daftar subagent yang tersedia" }
-func (cmdAgents) Execute(_ context.Context, _ []string, state State) error {
-	defs := subagent.GetAllDefinitions()
+func (c cmdAgents) Execute(_ context.Context, _ []string, state State) error {
+	var defs []*subagent.Definition
+	if c.loader != nil {
+		defs = c.loader.GetAllDefinitions()
+	}
 	if len(defs) == 0 {
 		fmt.Fprintln(state.Out(), "Tidak ada subagent yang dimuat.")
 		return nil

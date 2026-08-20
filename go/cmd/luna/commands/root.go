@@ -2,9 +2,13 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/monang404/luna-go/internal/config"
 	"github.com/monang404/luna-go/internal/llmclient"
@@ -57,6 +61,7 @@ func NewRootCmd(app *App) *cobra.Command {
 			ui.RegistryRenderCategorized(),
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			go checkUpdateAsync(cmd.Root().Version)
 			return startupSelfCheck(cmd)
 		},
 		// RunE handles the default entry point: when no subcommand matches,
@@ -216,13 +221,54 @@ func assertRegistryParity(root *cobra.Command) {
 // provider's key was exported directly and another wasn't -- see
 // docs/execution_sessions/41_port_config_layer.yaml and the FINAL
 // REPORT's Critical Findings table (ID P0-1) for the full writeup.
-func Execute() {
+func Execute(version string) {
 	loadSecretsAtStartup()
 	app := NewApp()
 	root := NewRootCmd(app)
+	root.Version = version
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+}
+
+func checkUpdateAsync(currentVersion string) {
+	if os.Getenv("LUNA_NO_UPDATE_CHECK") == "1" || currentVersion == "dev" || currentVersion == "" {
+		return
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	cacheFile := filepath.Join(home, ".luna", ".update_check")
+
+	info, err := os.Stat(cacheFile)
+	if err == nil && time.Since(info.ModTime()) < 24*time.Hour {
+		return
+	}
+
+	os.MkdirAll(filepath.Dir(cacheFile), 0755)
+
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get("https://api.github.com/repos/monang404/luna-go/releases/latest")
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	var release struct {
+		TagName string `json:"tag_name"`
+		HTMLURL string `json:"html_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return
+	}
+
+	os.WriteFile(cacheFile, []byte(release.TagName), 0644)
+
+	if release.TagName != "" && release.TagName != currentVersion {
+		fmt.Fprintf(os.Stderr, "\n[INFO] versi baru %s tersedia — lihat %s\n", release.TagName, release.HTMLURL)
 	}
 }
 

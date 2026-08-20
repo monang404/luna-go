@@ -41,7 +41,7 @@ func Providers() map[string]Provider {
 			KeyVar:   "GEMINI_API_KEY",
 		},
 		"cerebras": {
-			Endpoint: "https://api.cerebras.luna/v1/chat/completions",
+			Endpoint: "https://api.cerebras.ai/v1/chat/completions",
 			Model:    envOr("CEREBRAS_MODEL", "gpt-oss-120b"),
 			KeyVar:   "CEREBRAS_API_KEY",
 		},
@@ -73,7 +73,7 @@ func Providers() map[string]Provider {
 // AI_PROVIDERS and in every AI_TASK_PROVIDER_ORDER_* below. Preserved here
 // for parity with the zsh source, not because it's necessarily intentional
 // upstream -- flagged in the SESSION-41 changelog entry for visibility.
-var ProviderOrder = []string{"anthropic", "openrouter", "groq", "gemini", "cerebras"}
+var ProviderOrder = []string{"groq", "gemini", "cerebras"}
 
 // Task-class provider orders, ported from 05-provider_order.zsh.
 var (

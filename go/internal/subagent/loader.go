@@ -15,10 +15,18 @@ type Definition struct {
 	System      string
 }
 
-var (
-	registryMu sync.RWMutex
-	registry   = make(map[Role]*Definition)
-)
+// Loader manages the loading and retrieval of subagent definitions.
+type Loader struct {
+	mu       sync.RWMutex
+	registry map[Role]*Definition
+}
+
+// NewLoader creates a new Loader instance.
+func NewLoader() *Loader {
+	return &Loader{
+		registry: make(map[Role]*Definition),
+	}
+}
 
 // LoadDefinitions scans the .luna/agents directory and loads all .md files.
 // Files should have a simple frontmatter (---) containing:
@@ -26,7 +34,7 @@ var (
 // tools: tool1, tool2, tool3
 //
 // The remaining content is the System prompt.
-func LoadDefinitions(agentsDir string) error {
+func (l *Loader) LoadDefinitions(agentsDir string) error {
 	entries, err := os.ReadDir(agentsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -49,9 +57,9 @@ func LoadDefinitions(agentsDir string) error {
 		role := Role(strings.TrimSuffix(entry.Name(), ".md"))
 		def := parseDefinition(role, string(data))
 
-		registryMu.Lock()
-		registry[role] = def
-		registryMu.Unlock()
+		l.mu.Lock()
+		l.registry[role] = def
+		l.mu.Unlock()
 	}
 	return nil
 }
@@ -64,55 +72,64 @@ func parseDefinition(role Role, content string) *Definition {
 
 	content = strings.TrimSpace(content)
 
-	// Check for frontmatter
-	if strings.HasPrefix(content, "---") {
-		parts := strings.SplitN(content, "---", 3)
-		if len(parts) >= 3 {
-			frontmatter := parts[1]
-			def.System = strings.TrimSpace(parts[2])
+	if !strings.HasPrefix(content, "---") {
+		def.System = content
+		return def
+	}
 
-			lines := strings.Split(frontmatter, "\n")
-			for _, line := range lines {
-				line = strings.TrimSpace(line)
-				if line == "" {
-					continue
-				}
-				if strings.HasPrefix(line, "description:") {
-					def.Description = strings.TrimSpace(strings.TrimPrefix(line, "description:"))
-				} else if strings.HasPrefix(line, "tools:") {
-					toolsStr := strings.TrimSpace(strings.TrimPrefix(line, "tools:"))
-					toolsStr = strings.Trim(toolsStr, "[]")
-					for _, t := range strings.Split(toolsStr, ",") {
-						t = strings.TrimSpace(t)
-						if t != "" {
-							def.Tools = append(def.Tools, t)
-						}
-					}
-				}
-			}
-			return def
+	lines := strings.Split(content, "\n")
+	closeIdx := -1
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "---" {
+			closeIdx = i
+			break
 		}
 	}
 
-	// No frontmatter, everything is system prompt
-	def.System = content
+	if closeIdx == -1 {
+		// No valid closing frontmatter, treat everything as system prompt
+		def.System = content
+		return def
+	}
+
+	for _, line := range lines[1:closeIdx] {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "description:") {
+			def.Description = strings.TrimSpace(strings.TrimPrefix(line, "description:"))
+		} else if strings.HasPrefix(line, "tools:") {
+			toolsStr := strings.TrimSpace(strings.TrimPrefix(line, "tools:"))
+			toolsStr = strings.Trim(toolsStr, "[]")
+			for _, t := range strings.Split(toolsStr, ",") {
+				if t = strings.TrimSpace(t); t != "" {
+					def.Tools = append(def.Tools, t)
+				}
+			}
+		}
+	}
+
+	if closeIdx+1 < len(lines) {
+		def.System = strings.TrimSpace(strings.Join(lines[closeIdx+1:], "\n"))
+	} else {
+		def.System = ""
+	}
+
 	return def
 }
 
 // GetDefinition returns the loaded definition for the given role, if any.
-func GetDefinition(role Role) *Definition {
-	registryMu.RLock()
-	defer registryMu.RUnlock()
-	return registry[role]
+func (l *Loader) GetDefinition(role Role) *Definition {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.registry[role]
 }
 
 // GetAllDefinitions returns all loaded definitions.
-func GetAllDefinitions() []*Definition {
-	registryMu.RLock()
-	defer registryMu.RUnlock()
+func (l *Loader) GetAllDefinitions() []*Definition {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 
 	var list []*Definition
-	for _, def := range registry {
+	for _, def := range l.registry {
 		list = append(list, def)
 	}
 	return list

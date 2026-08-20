@@ -32,6 +32,7 @@ import (
 	"github.com/monang404/luna-go/internal/hooks"
 	"github.com/monang404/luna-go/internal/llmclient"
 	"github.com/monang404/luna-go/internal/memory"
+	"github.com/monang404/luna-go/internal/mcp"
 	"github.com/monang404/luna-go/internal/permission"
 	"github.com/monang404/luna-go/internal/settings"
 	"github.com/monang404/luna-go/internal/slashcmd"
@@ -70,6 +71,8 @@ type Options struct {
 
 	// Dispatcher is the tool dispatcher to use. nil builds the default.
 	Dispatcher *tools.Dispatcher
+	// Loader holds subagent definitions.
+	Loader *subagent.Loader
 	// Limits overrides config limits. Zero-value fields use defaults.
 	Limits config.Limits
 	// Paths overrides config paths.
@@ -90,6 +93,7 @@ type REPL struct {
 
 	// Agent dependencies
 	dispatcher *tools.Dispatcher
+	loader     *subagent.Loader
 	limits     config.Limits
 	paths      config.Paths
 	agentCtx   *permission.AgentContext
@@ -140,8 +144,9 @@ func New(opts Options) *REPL {
 		tracker:    permission.NewApprovalTracker(),
 		sessionID:  fmt.Sprintf("repl-%d", time.Now().Unix()),
 		slashReg:   slashcmd.NewRegistry(),
+		loader:     opts.Loader,
 	}
-	slashcmd.RegisterBuiltins(r.slashReg)
+	slashcmd.RegisterBuiltins(r.slashReg, r.loader)
 	return r
 }
 
@@ -169,8 +174,24 @@ func (r *REPL) Run(ctx context.Context) error {
 
 	// Load subagents
 	subagentsDir := filepath.Join(r.opts.ProjectRoot, ".luna", "agents")
-	if err := subagent.LoadDefinitions(subagentsDir); err != nil {
-		fmt.Fprintf(r.err, "luna: peringatan: gagal load subagents: %v\n", err)
+	if r.loader != nil {
+		if err := r.loader.LoadDefinitions(subagentsDir); err != nil {
+			fmt.Fprintf(r.err, "luna: peringatan: gagal load subagents: %v\n", err)
+		}
+	}
+
+	// Load MCP Config and start servers
+	mcpCfg, err := config.LoadMCPConfig("")
+	if err == nil && len(mcpCfg.MCPServers) > 0 {
+		mgr := mcp.NewManager()
+		if err := mgr.StartAndDiscover(ctx, mcpCfg); err != nil {
+			fmt.Fprintf(r.err, "luna: peringatan: gagal start MCP manager: %v\n", err)
+		} else {
+			if r.dispatcher != nil {
+				tools.RegisterMCPTools(r.dispatcher, mgr)
+			}
+		}
+		defer mgr.Close()
 	}
 
 	// Configure subagent spawning
@@ -180,6 +201,7 @@ func (r *REPL) Run(ctx context.Context) error {
 			ProviderOrder:   nil, // Handled internally or from settings if we implement it. For now, nil uses default LLM logic
 			Breaker:         nil, // Handled internally
 			Dispatcher:      r.dispatcher,
+			Loader:          r.loader,
 			ParentAgentCtx:  r.agentCtx,
 			Config:          r.permConfig,
 			Tracker:         r.tracker,

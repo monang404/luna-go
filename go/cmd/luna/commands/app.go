@@ -46,6 +46,7 @@ type App struct {
 	Patch      *filepatch.Service
 	Workflow   *workflow.Service
 	Dispatcher *tools.Dispatcher
+	Loader     *subagent.Loader
 
 	Limits config.Limits
 	Paths  config.Paths
@@ -72,6 +73,7 @@ func NewApp() *App {
 		Patch:      filepatch.NewService(requester, TerminalConfirm),
 		Workflow:   workflow.NewService(requester, TerminalConfirm, runner),
 		Dispatcher: dispatcher,
+		Loader:     subagent.NewLoader(),
 		Limits:     config.LoadLimits(),
 		Paths:      config.LoadPaths(),
 	}
@@ -111,7 +113,7 @@ func buildDispatcher() *tools.Dispatcher {
 	register("git_status", tools.GitStatusTool{})
 	register("git_diff", tools.GitDiffTool{})
 	register("web_fetch", tools.WebFetchTool{})
-	register("web_search", &tools.WebSearchTool{Deps: deps})
+	register("web_search", &tools.WebSearchTool{})
 	register("todo_write", tools.TodoWriteTool{})
 	register("todo_read", tools.TodoReadTool{})
 	register("bash_output", tools.BashOutputTool{})
@@ -207,6 +209,7 @@ func (a *App) subagentDeps(cwd string) subagent.Deps {
 	return subagent.Deps{
 		Limits:          a.Limits,
 		Dispatcher:      a.Dispatcher,
+		Loader:          a.Loader,
 		ParentAgentCtx:  agentCtx,
 		Config:          permission.LoadPermConfig(),
 		Tracker:         permission.NewApprovalTracker(),

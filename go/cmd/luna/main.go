@@ -24,5 +24,5 @@ import "github.com/monang404/luna-go/cmd/luna/commands"
 var version = "dev"
 
 func main() {
-	commands.Execute()
+	commands.Execute(version)
 }

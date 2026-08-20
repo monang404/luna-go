@@ -180,6 +180,9 @@ type Deps struct {
 	// guarantee rather than an incidental one).
 	Depth    int
 	MaxDepth int
+
+	// Loader holds the dynamically loaded subagent definitions.
+	Loader *Loader
 }
 
 // errNilDispatcher is the one case SpawnSubagent treats as a caller
@@ -198,7 +201,7 @@ var errNilDispatcher = errors.New("subagent: Deps.Dispatcher is nil")
 // `return 0`/`return 1` from itself rather than aborting its caller).
 // The returned error is non-nil only for the Dispatcher-nil case above.
 func SpawnSubagent(ctx context.Context, deps Deps, role Role, subGoal string) (Result, error) {
-	if !IsValidRole(role) {
+	if !IsValidRole(deps.Loader, role) {
 		return Result{
 			Status:  StatusFailed,
 			Role:    role,
@@ -236,7 +239,7 @@ func SpawnSubagent(ctx context.Context, deps Deps, role Role, subGoal string) (R
 	// on scoped, so RunLoop's own runTool -> Dispatcher.Dispatch call
 	// rejects it exactly like an unknown tool, before permission.
 	// CheckPermission is ever reached for it.
-	scoped := deps.Dispatcher.Subset(AllowedTools(role))
+	scoped := deps.Dispatcher.Subset(AllowedTools(deps.Loader, role))
 
 	// FASE 5/AC-02: a fresh, subagent-scoped AgentContext -- never the
 	// parent's pointer. See Deps.ParentAgentCtx doc comment above.
@@ -249,7 +252,7 @@ func SpawnSubagent(ctx context.Context, deps Deps, role Role, subGoal string) (R
 		Limits:        limits,
 		ProviderOrder: deps.ProviderOrder,
 		Breaker:       deps.Breaker,
-		SystemPrompt:  BuildSysprompt(role, subGoal, deps.TermuxContext),
+		SystemPrompt:  BuildSysprompt(deps.Loader, role, subGoal, deps.TermuxContext),
 		Dispatcher:    scoped,
 		PermDeps: tools.PermDeps{
 			AgentCtx: subCtx,

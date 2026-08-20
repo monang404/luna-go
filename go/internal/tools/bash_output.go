@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os/exec"
 	"strconv"
 	"sync"
@@ -51,12 +50,15 @@ func startBackgroundProcess(cmd *exec.Cmd, name string) (Result, error) {
 	bgProcesses[id] = bgp
 	bgMu.Unlock()
 
-	// Goroutine to capture output and monitor exit
+	// Goroutines to capture output concurrently
+	var wg sync.WaitGroup
+	wg.Add(2)
+
 	go func() {
-		multi := io.MultiReader(stdoutPipe, stderrPipe)
+		defer wg.Done()
 		buf := make([]byte, 1024)
 		for {
-			n, err := multi.Read(buf)
+			n, err := stdoutPipe.Read(buf)
 			if n > 0 {
 				bgp.mu.Lock()
 				bgp.buf.Write(buf[:n])
@@ -66,7 +68,26 @@ func startBackgroundProcess(cmd *exec.Cmd, name string) (Result, error) {
 				break
 			}
 		}
+	}()
 
+	go func() {
+		defer wg.Done()
+		buf := make([]byte, 1024)
+		for {
+			n, err := stderrPipe.Read(buf)
+			if n > 0 {
+				bgp.mu.Lock()
+				bgp.buf.Write(buf[:n])
+				bgp.mu.Unlock()
+			}
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	go func() {
+		wg.Wait()
 		err := cmd.Wait()
 
 		bgp.mu.Lock()
@@ -109,6 +130,11 @@ func (BashOutputTool) Execute(_ context.Context, args json.RawMessage) (Result, 
 		if bgp.err != nil {
 			status = fmt.Sprintf("gagal (%v)", bgp.err)
 		}
+		
+		bgMu.Lock()
+		delete(bgProcesses, id)
+		bgMu.Unlock()
+		
 		if out == "" {
 			return Result{Output: fmt.Sprintf("Proses %s telah %s. Tidak ada output baru.", id, status)}, nil
 		}
