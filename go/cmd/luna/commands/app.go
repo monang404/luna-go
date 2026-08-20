@@ -87,6 +87,7 @@ func NewApp() *App {
 // without a compile-time reminder (the length assertion below).
 func buildDispatcher() *tools.Dispatcher {
 	d := tools.NewDispatcher()
+	registered := 0
 	register := func(name string, tool tools.Tool) {
 		entry := tools.Registry[name]
 		if err := d.Register(name, entry, tool); err != nil {
@@ -96,6 +97,7 @@ func buildDispatcher() *tools.Dispatcher {
 			// invariant violation).
 			panic(fmt.Sprintf("commands: buildDispatcher: %v", err))
 		}
+		registered++
 	}
 	register("read_file", tools.ReadFileTool{})
 	register("list_dir", tools.ListDirTool{})
@@ -119,10 +121,11 @@ func buildDispatcher() *tools.Dispatcher {
 	register("bash_output", tools.BashOutputTool{})
 	register("kill_shell", tools.KillShellTool{})
 	register("delegate_task", &tools.DelegateTaskTool{})
-	if len(tools.Registry) != 22 {
+	
+	if registered != len(tools.Registry) {
 		// Guard against a future Registry addition silently missing a
 		// register() call above -- see the comment on this function.
-		panic(fmt.Sprintf("commands: buildDispatcher: tools.Registry has %d entries, only 22 are wired -- add the missing register() call", len(tools.Registry)))
+		panic(fmt.Sprintf("commands: buildDispatcher: tools.Registry has %d entries, only %d are wired -- add the missing register() call", len(tools.Registry), registered))
 	}
 	return d
 }

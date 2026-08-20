@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"runtime"

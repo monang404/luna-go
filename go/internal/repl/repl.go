@@ -23,9 +23,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/chzyer/readline"
 
 	"github.com/monang404/luna-go/internal/agent"
 	"github.com/monang404/luna-go/internal/config"
@@ -305,7 +309,49 @@ func (r *REPL) Run(ctx context.Context) error {
 
 // interactiveLoop reads user input and processes each line.
 func (r *REPL) interactiveLoop(ctx context.Context) error {
-	scanner := bufio.NewScanner(r.in)
+	var (
+		cancelTurn context.CancelFunc
+		mu         sync.Mutex
+	)
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+	defer signal.Stop(sigCh)
+
+	var lastInterrupt time.Time
+	go func() {
+		for range sigCh {
+			if time.Since(lastInterrupt) < 2*time.Second {
+				fmt.Fprintln(os.Stderr, "\n[luna] Keluar (interrupt ganda)")
+				os.Exit(130)
+			}
+			lastInterrupt = time.Now()
+			
+			mu.Lock()
+			if cancelTurn != nil {
+				cancelTurn()
+			}
+			mu.Unlock()
+		}
+	}()
+
+	var rl *readline.Instance
+	if r.in == os.Stdin || r.in == nil {
+		historyFile := filepath.Join(config.DefaultConfigDir(), "history")
+		var err error
+		rl, err = newLineReader(historyFile)
+		if err != nil {
+			fmt.Fprintf(r.err, "luna: peringatan: gagal inisialisasi readline: %v\n", err)
+		} else {
+			defer rl.Close()
+		}
+	}
+
+	var scanner *bufio.Scanner
+	if rl == nil {
+		scanner = bufio.NewScanner(r.in)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -314,12 +360,55 @@ func (r *REPL) interactiveLoop(ctx context.Context) error {
 		}
 
 		r.printStatusLine()
-		fmt.Fprint(r.out, "\n> ")
-		if !scanner.Scan() {
-			fmt.Fprintln(r.out)
-			return nil // EOF
+		var input string
+		
+		if rl != nil {
+			line, err := rl.Readline()
+			if err == readline.ErrInterrupt {
+				if len(line) == 0 {
+					// Pressing Ctrl+C on empty line
+					continue
+				}
+				continue
+			} else if err == io.EOF {
+				return nil
+			} else if err != nil {
+				fmt.Fprintln(r.err, err)
+				return err
+			}
+			input = line
+		} else {
+			fmt.Fprint(r.out, "\n> ")
+			if !scanner.Scan() {
+				fmt.Fprintln(r.out)
+				return nil // EOF
+			}
+			input = scanner.Text()
 		}
-		input := strings.TrimSpace(scanner.Text())
+
+		input = strings.TrimSpace(input)
+
+		// Multi-line support: if line ends with '\', read more
+		for strings.HasSuffix(input, "\\") {
+			input = strings.TrimSuffix(input, "\\")
+			if rl != nil {
+				rl.SetPrompt("..> ")
+				more, err := rl.Readline()
+				rl.SetPrompt("\033[36m❯\033[0m ")
+				if err != nil {
+					break
+				}
+				input += "\n" + strings.TrimSpace(more)
+			} else {
+				fmt.Fprint(r.out, "..> ")
+				if !scanner.Scan() {
+					break
+				}
+				input += "\n" + strings.TrimSpace(scanner.Text())
+			}
+		}
+
+		input = strings.TrimSpace(input)
 		if input == "" {
 			continue
 		}
@@ -333,7 +422,22 @@ func (r *REPL) interactiveLoop(ctx context.Context) error {
 		}
 
 		// Agent turn
-		if err := r.runTurn(ctx, input); err != nil {
+		turnCtx, cancel := context.WithCancel(ctx)
+		mu.Lock()
+		cancelTurn = cancel
+		mu.Unlock()
+
+		err := r.runTurn(turnCtx, input)
+
+		mu.Lock()
+		cancelTurn = nil
+		mu.Unlock()
+
+		if err != nil {
+			if turnCtx.Err() == context.Canceled && ctx.Err() == nil {
+				fmt.Fprintln(r.err, "\n[Dibatalkan]")
+				continue // Turn cancelled by user, but session continues
+			}
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}

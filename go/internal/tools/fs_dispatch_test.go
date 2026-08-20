@@ -51,6 +51,9 @@ func yoloPermDeps(cwd string) PermDeps {
 // Dispatcher.Dispatch with valid args, not just by calling Execute
 // directly.
 func TestDispatcher_AllTenFsToolsEndToEnd(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping POSIX-dependent tests on Windows (ls, patch, etc)")
+	}
 	dir := t.TempDir()
 	d := newFsTestDispatcher(t)
 	deps := yoloPermDeps(dir)
